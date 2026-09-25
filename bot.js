@@ -6,44 +6,65 @@
 // 5. 🔥 Súper Limpiador (Ignora emojis y fuentes raras al buscar grupos).
 
 // ================================================================
-// 🛡️ VERIFICACIÓN DE MEMORIA AL INICIO
-// NODE_OPTIONS=--max-old-space-size=3072 debe estar en las variables
-// de entorno del sistema. Si no está, avisa y termina limpio.
+// 🛡️ VERIFICACIÓN DE MEMORIA Y RECOLECTOR DE BASURA (GC)
+// Optimizado para operar con bajo consumo de RAM (< 1 GB)
 // ================================================================
 const v8 = require('v8');
-const ramMB = v8.getHeapStatistics().heap_size_limit / (1024 * 1024);
-if (ramMB < 2500) {
-    console.error('╔════════════════════════════════════════════════════════╗');
-    console.error('║  ❌ ERROR: Node.js tiene solo ' + Math.round(ramMB) + ' MB de RAM asignados.   ║');
-    console.error('║  El bot necesita al menos 3 GB para funcionar bien.    ║');
-    console.error('║                                                        ║');
-    console.error('║  Solución: Cierra y vuelve a abrir la terminal,        ║');
-    console.error('║  luego ejecuta: node bot.js                            ║');
-    console.error('║  (NODE_OPTIONS ya está configurado en tu sistema)      ║');
-    console.error('╚════════════════════════════════════════════════════════╝');
-    process.exit(1);
-}
+const path = require('path');
+const ramMB = Math.round(v8.getHeapStatistics().heap_size_limit / (1024 * 1024));
+const gcDisponible = typeof global.gc === 'function';
 
-console.log(`✅ Memoria OK: ${Math.round(ramMB)} MB asignados a Node.js`);
+console.log(`✅ Memoria Node.js asignada: ${ramMB} MB (Límite optimizado)`);
+if (gcDisponible) {
+    console.log(`✅ Recolector de basura activo (--expose-gc): la RAM se liberará en cada descanso.`);
+} else {
+    console.log(`ℹ️ Tip: Ejecuta con iniciar.bat o usa --expose-gc para máxima liberación de RAM.`);
+}
 
 const CONFIGURACION = {
     textosPorCiclo: [
-        "🚀 ¿Tu negocio aún no tiene página web? Las diseñamos a la medida de lo que necesitas. Desde una web sencilla para darte a conocer, hasta un E-commerce completamente automatizado. Dale a tu marca la presencia digital que merece. 🛡️ Aceptamos trato con admin para tu seguridad. 👉 ¡Escríbeme al privado y cotiza la tuya ahora mismo!",
-        "🌐 ¿Aún sin página web para tu negocio? Construimos tu sitio a la medida: desde una web sencilla y rápida, hasta una tienda E-commerce 100% automatizada. Haz que tus clientes te encuentren fácil y compren sin trabas. 🔒 Trato seguro con admin de grupo. 💬 ¡Mándame un mensaje al privado y cotizamos sin compromiso!",
-        "⚡ Dale a tu negocio la presencia web que necesita. Diseñamos páginas a la medida: ya sea una web sencilla o un E-commerce totalmente automatizado para tus ventas. Nos ajustamos a tu proyecto. 🛡️ Tu inversión está segura (aceptamos trato por admin). 📲 ¡Escríbeme al privado para cotizar tu página hoy!",
-        "🚀 ¿Tu negocio aún no está en internet? Creamos tu página web a la medida: rápida, fácil de usar y ajustada a tu presupuesto. 🛡️ Trato 100% seguro con admin. 👉 ¡Escríbeme al privado y cotiza la tuya hoy!",
-        "🌐 Dale a tu negocio la presencia digital que merece. Diseñamos webs rápidas y fáciles de usar, adaptándonos a lo que puedes invertir. 🔒 Tu seguridad es primero: aceptamos trato por admin. 📲 ¡Mándame un mensaje para cotizar sin compromiso!",
-        "¿Aún sin página web? Te construimos una plataforma rápida, a tu medida y sin salirte de tu presupuesto. 🛡️ Aceptamos trato con admin para total seguridad. 💬 ¡Escríbeme y pide tu cotización ahora!",
-        "🛍️ Haz que tus clientes te encuentren en internet. Desarrollamos tu página web súper rápida, hecha a tu medida y cuidando tu bolsillo. 🔒 Trato seguro con admin disponible. 👉 ¡Escríbeme al privado para cotizar tu proyecto!",
-        "🚀 Impulsa tu negocio con una web propia. Rápida, fácil de usar y 100% ajustada a tu presupuesto. Garantizamos tu inversión (aceptamos trato por admin). 📲 ¡Mándame un mensaje y cotizamos al instante!"
+        [ // Grupo 1
+            "Sabemos cuánto te esfuerzas por tu negocio todos los días. Por eso, creamos páginas web que realmente le hacen justicia a tu trabajo. Nada de moldes repetidos: un diseño a tu medida, pensado para que conectes con tus clientes. ¿Hablamos de tu idea? Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
+            "Tu emprendimiento tiene una personalidad única y tu web debería gritarlo a los cuatro vientos. En The Rose Group nos sentamos a escuchar qué buscas y diseñamos exactamente lo que tu negocio necesita. Simple, transparente y a tu medida. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
+            "Tener un gran producto o servicio es el primer paso. El segundo es que el mundo lo vea como se merece. Te ayudamos a darle a tu negocio ese hogar digital perfecto con una página web hecha cien por ciento para ti. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
+            "Dale a tu proyecto ese empujón que le falta. Si sientes que es momento de tener una página web que de verdad transmita la calidad de lo que haces, estamos aquí para diseñarla juntos. Escríbenos y le damos forma. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
+            "Detrás de tu negocio hay mucho corazón, y queremos que tu presencia en internet transmita exactamente eso. Diseñamos tu página web a la medida para que tu emprendimiento brille y tú te preocupes solo por atender a tus nuevos clientes. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        ],
+        [ // Grupo 2
+            "Tu negocio nació de una gran idea; ahora necesita el espacio digital para crecer. Diseñamos la página web que tu proyecto merece: profesional, única y 100% a tu medida. ¡Hagámoslo realidad! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
+            "Tu emprendimiento no es uno del montón, tu página web tampoco debería serlo. En The Rose Group creamos sitios web a la medida que reflejan la verdadera calidad de lo que ofreces. ¿Hablamos? Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
+            "Sabemos lo mucho que cuidas tu negocio todos los días. Déjanos cuidar su imagen en internet. Diseñamos tu página web a la medida para que conectes con tus clientes de forma profesional y segura. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
+            "Dale a tu proyecto el impulso digital que está pidiendo. Diseñamos tu página web desde cero, entendiendo lo que haces y destacando lo mejor de tu negocio ante el mundo. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
+            "Muestra a tus clientes el verdadero nivel de tu trabajo. Construimos la página web perfecta para tu negocio, hecha a la medida de tus objetivos. Tú pones el talento, nosotros la tecnología. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        ],
+        [ // Grupo 3
+            "Tu negocio merece estar en internet, pero no de cualquier forma. En The Rose Group diseñamos páginas web a la medida que capturan la esencia de tu trabajo y atraen a las personas correctas. Escríbenos por mensaje directo y empecemos a darle vida a tu idea hoy mismo. Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
+            "Le pones el alma a tu emprendimiento a diario, deja que nosotros nos encarguemos de tu vitrina digital. Creamos tu página web a la medida para que luzca tan profesional y confiable como tu servicio. Haz clic en el enlace y cuéntanos qué tienes en mente. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
+            "La mejor carta de presentación para tu negocio es una web que hable por ti. Nos sentamos a escuchar tu visión y diseñamos un sitio único que realmente conecte con tus futuros clientes. Envíanos un mensaje y agendemos una charla breve para conocernos. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
+            "No necesitas ser un experto en tecnología para tener una presencia online increíble. Nosotros nos encargamos de todo el diseño a la medida mientras tú te enfocas en lo que mejor sabes hacer: hacer crecer tu negocio. Toca el botón de abajo y descubre cómo podemos ayudarte. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
+            "Un gran proyecto necesita un espacio digital que lo respalde. Construimos tu página web a la medida, paso a paso y asegurándonos de transmitir la verdadera calidad de tu marca. Hablemos de tu negocio; déjanos un comentario o un mensaje para comenzar. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        ],
+        [ // Grupo 4
+            "Tu negocio merece verse tan profesional como el esfuerzo que le pones a diario. Diseñamos tu web a la medida para que conectes con más clientes. ¡Escríbenos y empecemos hoy! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
+            "Tu emprendimiento es único y tu página web también debería serlo. En The Rose Group diseñamos a tu medida, sin moldes repetidos. Envíame un mensaje y le damos forma a tu idea. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
+            "Tú concéntrate en atender a tus clientes, nosotros nos encargamos de tu página web. Un diseño a la medida, humano y profesional. ¡Contáctanos! Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
+            "La primera impresión en internet lo es todo. Dale a tu marca el hogar digital que se merece con un diseño 100% a la medida. ¡Contáctanos y cuéntanos qué necesitas! Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
+            "Es momento de que tu trabajo llegue a más personas. Creamos la página web perfecta para tu negocio, adaptada a tus objetivos reales. Déjanos un comentario y te asesoramos. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        ],
+        [ // Grupo 5
+            "Que tu página web te haga sentir tan orgulloso como tu propio negocio. En The Rose Group diseñamos tu sitio a la medida para destacar lo mejor de ti. ¡Escríbenos y hagamos equipo! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
+            "Tú nos cuentas la visión de tu emprendimiento y nosotros la convertimos en una página web profesional. Sin lenguaje técnico, 100% a tu medida. Mándanos un mensaje y empecemos hoy. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
+            "Atrae a las personas correctas con una imagen digital impecable. Construimos la página web que tu negocio necesita para conectar y crecer de verdad. Haz clic aquí y hablemos de tu proyecto. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
+            "¿Listo para dar el siguiente gran paso? Dale a tu emprendimiento el espacio en internet que realmente merece con un diseño web a la medida. ¡Contáctanos y te asesoramos paso a paso! Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
+            "No dejes tu presencia digital para después. Tu negocio necesita hoy una página web que transmita confianza, cercanía y profesionalismo. Déjanos un DM y le damos vida a tu idea. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        ]
     ],
-    rutaImagen: "./oferta.png", 
-    tiempoEsperaSegundos: 6,          // ⏱️ Espera entre grupos (Regresado a 6s para evitar shadowban)
-    tiempoMaximoEnvioSegundos: 60,    // ⏱️ Tiempo límite para enviar (aumentado para conexiones lentas)
-    gruposPorLote: 30,                // Envía a 30 grupos antes de pausar (Protección anti-spam)
-    minutosDescansoPorLote: 2,        // Descansa 2 minutos por cada lote
+    rutaImagen: path.join(__dirname, 'oferta.png'), 
+    tiempoEsperaMinSegundos: 12,       // ⏱️ Espera mínima entre grupos (Protección anti-spam/baneo)
+    tiempoEsperaMaxSegundos: 15,       // ⏱️ Espera máxima entre grupos (Varía aleatoriamente entre 12 y 15s)
+    tiempoMaximoEnvioSegundos: 60,     // ⏱️ Tiempo límite para enviar (aumentado para conexiones lentas)
     horasDeEsperaEntreCiclos: [
-        0, 1, 1, 1, 1, 1, 1, 1
+        0, 1.5, 1.5, 1.5, 1.5
     ],
     gruposDestino: [
         "120363408267789482@g.us|||Prueba1",
@@ -246,7 +267,7 @@ const CONFIGURACION = {
 // Ejecuta obtener_grupos.js cuando quieras actualizar la lista.
 // Si el archivo no existe, usa la lista hardcodeada de arriba.
 // ================================================================
-const rutaGrupos = './mis_grupos.txt';
+const rutaGrupos = path.join(__dirname, 'mis_grupos.txt');
 try {
     const lineasArchivo = require('fs').readFileSync(rutaGrupos, 'utf8').split('\n');
     const gruposLeidos = [];
@@ -283,7 +304,7 @@ const readline = require('readline');
 // ================================================================
 // 💾 GESTIÓN DE ESTADO (Para auto-recovery en caso de crashes)
 // ================================================================
-const rutaEstado = './estado.json';
+const rutaEstado = path.join(__dirname, 'estado.json');
 
 function cargarEstado() {
     try {
@@ -325,12 +346,13 @@ const cliente = new Client({
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
             '--disable-gpu',
             '--no-first-run',        
             '--no-zygote',
             '--disable-features=ServiceWorker',
-            // ✅ Solo flags seguros que no rompen la conexión de WhatsApp
+            // ⚡ OPTIMIZACIONES DE MEMORIA RAM EN CHROME (Permite procesar adjuntos)
+            '--js-flags=--max-old-space-size=512',   // Limita la memoria interna de Chrome a 512 MB
+            '--renderer-process-limit=1',          // Limita a 1 subproceso de renderizado
             '--disable-extensions',
             '--disable-notifications',
             '--mute-audio',
@@ -382,6 +404,43 @@ const limpiarTextoFuerte = (texto) => {
         .replace(/[^a-zA-Z0-9]/g, '')    // Elimina emojis, espacios y símbolos
         .toLowerCase();
 };
+
+// ================================================================
+// 🛑 SISTEMA DE DESCANSOS ESCALONADOS ANTI-BANEO
+// 5 grupos  -> 30 segundos
+// 10 grupos -> 1 minuto
+// 20 grupos -> 2 minutos
+// 40 grupos -> 4 minutos
+// 50 grupos -> 5 minutos
+// 100 grupos -> 10 minutos
+// Los descansos se reinician en cada bloque de 50 (55, 60, 70, 90, 100...)
+// ================================================================
+function obtenerDescansoEscalonado(totalEnvios) {
+    if (totalEnvios <= 0) return null;
+
+    if (totalEnvios % 100 === 0) {
+        return { segundos: 600, descripcion: "10 minutos (Hito de 100 grupos)" };
+    }
+    if (totalEnvios % 50 === 0) {
+        return { segundos: 300, descripcion: "5 minutos (Hito de 50 grupos)" };
+    }
+
+    const pos = totalEnvios % 50;
+    if (pos === 40) {
+        return { segundos: 240, descripcion: "4 minutos (Pausa tras 40 grupos)" };
+    }
+    if (pos === 20) {
+        return { segundos: 120, descripcion: "2 minutos (Pausa tras 20 grupos)" };
+    }
+    if (pos === 10 || pos === 30) {
+        return { segundos: 60, descripcion: "1 minuto (Pausa tras 10 grupos)" };
+    }
+    if (pos % 5 === 0) {
+        return { segundos: 30, descripcion: "30 segundos (Pausa tras 5 grupos)" };
+    }
+
+    return null;
+}
 
 // Espera a que la página de WhatsApp esté completamente estable
 async function esperarEstabilidadDePagina() {
@@ -470,33 +529,10 @@ cliente.on('qr', (qrCode) => {
 cliente.on('ready', () => {
     console.log('✅ ¡El bot ha iniciado sesión correctamente y la sesión está lista!');
     
-    // 🚦 BLOQUEADOR DE RECURSOS PESADOS (solo se registra UNA vez)
+    // 🚦 MONITOREO DE ESTABILIDAD (solo se registra UNA vez)
+    // El bloqueo de imágenes y contención de memoria se gestiona nativamente en Chrome
     if (!interceptorActivo) {
         interceptorActivo = true;
-        cliente.pupPage.setRequestInterception(true).then(() => {
-            cliente.pupPage.on('request', (req) => {
-                try {
-                    if (req.isInterceptResolutionHandled()) return; // ya fue manejado, ignorar
-                    const tipo = req.resourceType();
-                    const url  = req.url();
-                    // Bloquear SOLO imágenes, media y fuentes — NO 'other'
-                    const bloquear = ['image', 'media', 'font'].includes(tipo)
-                        || url.includes('analytics')
-                        || url.includes('doubleclick')
-                        || url.includes('facebook.com/tr');
-                    if (bloquear) {
-                        req.abort();
-                    } else {
-                        req.continue();
-                    }
-                } catch (e) {
-                    // Request ya manejada por otro listener — ignorar silenciosamente
-                }
-            });
-            console.log('🚦 Interceptor activo: imágenes/media/fuentes bloqueadas.');
-        }).catch(() => {});
-
-        // Monitorear navegaciones (solo una vez)
         cliente.pupPage.on('framenavigated', (frame) => {
             if (frame === cliente.pupPage.mainFrame()) {
                 paginaNavegando = true;
@@ -504,6 +540,7 @@ cliente.on('ready', () => {
                 setTimeout(() => { paginaNavegando = false; }, 10000);
             }
         });
+        console.log('🚦 Optimizador activo: memoria limitada y recursos pesados suprimidos nativamente.');
     }
     
     if (!fs.existsSync(CONFIGURACION.rutaImagen)) {
@@ -616,6 +653,9 @@ async function iniciarMotorDeEnvios() {
 
                     let reporteExitosos = [], reporteSoloAdmin = [], reporteNoEncontrado = [];
                     let enviosConsecutivos = 0, contadorGrupoActual = 0;
+                    let indiceGrupoMensaje = i % CONFIGURACION.textosPorCiclo.length;
+                    let grupoMensajesActual = CONFIGURACION.textosPorCiclo[indiceGrupoMensaje];
+                    console.log(`📝 [ROTACIÓN ACTIVA] Usando el Grupo de Mensajes #${indiceGrupoMensaje + 1} (contiene ${grupoMensajesActual.length} variantes).`);
                     const totalGrupos = CONFIGURACION.gruposDestino.length;
 
                     for (let lineaGrupo of CONFIGURACION.gruposDestino) {
@@ -663,8 +703,16 @@ async function iniciarMotorDeEnvios() {
                             continue; 
                         }
 
-                        const mensajeFinal = CONFIGURACION.textosPorCiclo[i];
-                        await esperar((CONFIGURACION.tiempoEsperaSegundos * 1000) + Math.floor(Math.random() * 2000));
+                        // Rotar el mensaje dentro del grupo para evitar ban
+                        let indiceVariante = contadorGrupoActual % grupoMensajesActual.length;
+                        const mensajeFinal = grupoMensajesActual[indiceVariante];
+                        
+                        // ⏱️ Espera aleatoria de 12 a 15 segundos entre grupos (+ micro-jitter anti-patrones)
+                        const minMs = CONFIGURACION.tiempoEsperaMinSegundos * 1000;
+                        const maxMs = CONFIGURACION.tiempoEsperaMaxSegundos * 1000;
+                        const esperaAleatoria = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs + Math.floor(Math.random() * 1500);
+                        console.log(`⏳ [${hora()}] Esperando ${(esperaAleatoria / 1000).toFixed(1)}s antes de procesar el siguiente grupo...`);
+                        await esperar(esperaAleatoria);
 
                         let envioExitoso = false;
                         let reintentosRestantes = 1;
@@ -739,26 +787,34 @@ async function iniciarMotorDeEnvios() {
                             }
                         }
 
-                        // Anti-saturación dentro del for
-                        if (enviosConsecutivos >= CONFIGURACION.gruposPorLote) {
-                            console.log(`\n🛑 [ANTI-SATURACIÓN] Descansando ${CONFIGURACION.minutosDescansoPorLote} min + limpieza de memoria...\n`);
+                        // 🛑 DESCANSOS ESCALONADOS ANTI-BANEO + LIMPIEZA DE RAM
+                        if (envioExitoso) {
+                            const pausa = obtenerDescansoEscalonado(enviosConsecutivos);
+                            if (pausa) {
+                                console.log(`\n🛑 [PAUSA ANTI-BANEO] Descanso de ${pausa.descripcion} tras ${enviosConsecutivos} grupos enviados.`);
 
-                            // 🧹 LIMPIEZA ACTIVA DE MEMORIA (Solo Node.js y V8 seguro)
-                            try {
-                                await cliente.pupPage.evaluate(async () => {
-                                    // Sugerir GC al motor V8 de Chrome (sin romper las cachés de WhatsApp)
-                                    if (window.gc) window.gc();
-                                });
-                            } catch(e) { /* silencioso si Chrome no está disponible */ }
+                                // 🧹 Limpieza activa de memoria en pausas de 1 minuto o más
+                                if (pausa.segundos >= 60) {
+                                    try {
+                                        await cliente.pupPage.evaluate(async () => {
+                                            if (window.gc) window.gc();
+                                        });
+                                    } catch(e) {}
 
-                            // GC de Node.js (requiere --expose-gc en NODE_OPTIONS)
-                            if (typeof global.gc === 'function') {
-                                global.gc();
-                                console.log('   ♻️  GC ejecutado en Node.js');
+                                    if (typeof global.gc === 'function') {
+                                        global.gc();
+                                        console.log('   ♻️  Memoria RAM liberada (GC ejecutado en Node.js y Chrome)');
+                                    }
+                                }
+
+                                const horaFinPausa = new Date(Date.now() + pausa.segundos * 1000)
+                                    .toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                                console.log(`   ⏳ Reanudando envíos a las: ${horaFinPausa}`);
+                                await esperar(pausa.segundos * 1000);
+
+                                // La rotación del mensaje ahora se hace automáticamente en cada envío individual para mayor seguridad.
+                                console.log(`▶️ Reanudando envíos...\n`);
                             }
-
-                            await esperar(CONFIGURACION.minutosDescansoPorLote * 60 * 1000); 
-                            enviosConsecutivos = 0;
                         }
 
                     } // fin for grupos

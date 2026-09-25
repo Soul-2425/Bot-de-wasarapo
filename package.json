@@ -5,9 +5,10 @@
   "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node --max-old-space-size=6144 bot.js"
+    "start": "node --max-old-space-size=1024 --expose-gc bot.js",
+    "grupos": "node --max-old-space-size=1024 obtener_grupos.js"
   },
-  "nodeOptions": "--max-old-space-size=6144",
+  "nodeOptions": "--max-old-space-size=1024 --expose-gc",
   "keywords": [],
   "author": "",
   "license": "ISC",

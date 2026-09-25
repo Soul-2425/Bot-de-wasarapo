@@ -1,5 +1,5 @@
 @echo off
-set NODE_OPTIONS=--max-old-space-size=3072 --expose-gc
+set NODE_OPTIONS=--max-old-space-size=1024 --expose-gc
 
 :inicio
 echo ========================================
