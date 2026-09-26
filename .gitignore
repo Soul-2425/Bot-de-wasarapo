@@ -3,7 +3,9 @@ node_modules/
 
 # Sesión y estado de WhatsApp
 .wwebjs_auth/
+.wwebjs_cache/
 estado.json
+estado_envio.json
 
 # Archivos temporales de Office o SO
 ~$*

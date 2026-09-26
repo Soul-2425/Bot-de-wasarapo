@@ -23,40 +23,11 @@ if (gcDisponible) {
 
 const CONFIGURACION = {
     textosPorCiclo: [
-        [ // Grupo 1
-            "Sabemos cuánto te esfuerzas por tu negocio todos los días. Por eso, creamos páginas web que realmente le hacen justicia a tu trabajo. Nada de moldes repetidos: un diseño a tu medida, pensado para que conectes con tus clientes. ¿Hablamos de tu idea? Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
-            "Tu emprendimiento tiene una personalidad única y tu web debería gritarlo a los cuatro vientos. En The Rose Group nos sentamos a escuchar qué buscas y diseñamos exactamente lo que tu negocio necesita. Simple, transparente y a tu medida. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
-            "Tener un gran producto o servicio es el primer paso. El segundo es que el mundo lo vea como se merece. Te ayudamos a darle a tu negocio ese hogar digital perfecto con una página web hecha cien por ciento para ti. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
-            "Dale a tu proyecto ese empujón que le falta. Si sientes que es momento de tener una página web que de verdad transmita la calidad de lo que haces, estamos aquí para diseñarla juntos. Escríbenos y le damos forma. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
-            "Detrás de tu negocio hay mucho corazón, y queremos que tu presencia en internet transmita exactamente eso. Diseñamos tu página web a la medida para que tu emprendimiento brille y tú te preocupes solo por atender a tus nuevos clientes. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
-        ],
-        [ // Grupo 2
-            "Tu negocio nació de una gran idea; ahora necesita el espacio digital para crecer. Diseñamos la página web que tu proyecto merece: profesional, única y 100% a tu medida. ¡Hagámoslo realidad! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
-            "Tu emprendimiento no es uno del montón, tu página web tampoco debería serlo. En The Rose Group creamos sitios web a la medida que reflejan la verdadera calidad de lo que ofreces. ¿Hablamos? Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
-            "Sabemos lo mucho que cuidas tu negocio todos los días. Déjanos cuidar su imagen en internet. Diseñamos tu página web a la medida para que conectes con tus clientes de forma profesional y segura. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
-            "Dale a tu proyecto el impulso digital que está pidiendo. Diseñamos tu página web desde cero, entendiendo lo que haces y destacando lo mejor de tu negocio ante el mundo. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
-            "Muestra a tus clientes el verdadero nivel de tu trabajo. Construimos la página web perfecta para tu negocio, hecha a la medida de tus objetivos. Tú pones el talento, nosotros la tecnología. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
-        ],
-        [ // Grupo 3
-            "Tu negocio merece estar en internet, pero no de cualquier forma. En The Rose Group diseñamos páginas web a la medida que capturan la esencia de tu trabajo y atraen a las personas correctas. Escríbenos por mensaje directo y empecemos a darle vida a tu idea hoy mismo. Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
-            "Le pones el alma a tu emprendimiento a diario, deja que nosotros nos encarguemos de tu vitrina digital. Creamos tu página web a la medida para que luzca tan profesional y confiable como tu servicio. Haz clic en el enlace y cuéntanos qué tienes en mente. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
-            "La mejor carta de presentación para tu negocio es una web que hable por ti. Nos sentamos a escuchar tu visión y diseñamos un sitio único que realmente conecte con tus futuros clientes. Envíanos un mensaje y agendemos una charla breve para conocernos. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
-            "No necesitas ser un experto en tecnología para tener una presencia online increíble. Nosotros nos encargamos de todo el diseño a la medida mientras tú te enfocas en lo que mejor sabes hacer: hacer crecer tu negocio. Toca el botón de abajo y descubre cómo podemos ayudarte. Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
-            "Un gran proyecto necesita un espacio digital que lo respalde. Construimos tu página web a la medida, paso a paso y asegurándonos de transmitir la verdadera calidad de tu marca. Hablemos de tu negocio; déjanos un comentario o un mensaje para comenzar. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
-        ],
-        [ // Grupo 4
-            "Tu negocio merece verse tan profesional como el esfuerzo que le pones a diario. Diseñamos tu web a la medida para que conectes con más clientes. ¡Escríbenos y empecemos hoy! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
-            "Tu emprendimiento es único y tu página web también debería serlo. En The Rose Group diseñamos a tu medida, sin moldes repetidos. Envíame un mensaje y le damos forma a tu idea. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
-            "Tú concéntrate en atender a tus clientes, nosotros nos encargamos de tu página web. Un diseño a la medida, humano y profesional. ¡Contáctanos! Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
-            "La primera impresión en internet lo es todo. Dale a tu marca el hogar digital que se merece con un diseño 100% a la medida. ¡Contáctanos y cuéntanos qué necesitas! Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
-            "Es momento de que tu trabajo llegue a más personas. Creamos la página web perfecta para tu negocio, adaptada a tus objetivos reales. Déjanos un comentario y te asesoramos. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
-        ],
-        [ // Grupo 5
-            "Que tu página web te haga sentir tan orgulloso como tu propio negocio. En The Rose Group diseñamos tu sitio a la medida para destacar lo mejor de ti. ¡Escríbenos y hagamos equipo! Para su total seguridad y tranquilidad, acepto realizar el trato a través del administrador del grupo.",
-            "Tú nos cuentas la visión de tu emprendimiento y nosotros la convertimos en una página web profesional. Sin lenguaje técnico, 100% a tu medida. Mándanos un mensaje y empecemos hoy. Con el fin de garantizar una transacción segura, acepto la intermediación del administrador del grupo.",
-            "Atrae a las personas correctas con una imagen digital impecable. Construimos la página web que tu negocio necesita para conectar y crecer de verdad. Haz clic aquí y hablemos de tu proyecto. Como garantía de confianza, estoy dispuesto a gestionar el trato mediante el administrador de este grupo.",
-            "¿Listo para dar el siguiente gran paso? Dale a tu emprendimiento el espacio en internet que realmente merece con un diseño web a la medida. ¡Contáctanos y te asesoramos paso a paso! Para su mayor comodidad y seguridad, acepto concretar el trato utilizando al administrador como intermediario.",
-            "No dejes tu presencia digital para después. Tu negocio necesita hoy una página web que transmita confianza, cercanía y profesionalismo. Déjanos un DM y le damos vida a tu idea. Garantizo la total transparencia del proceso aceptando al administrador del grupo como intermediario del trato."
+        [ // Grupo Único con los 4 mensajes rotativos
+            "¿Tu negocio ya está para el siguiente nivel pero aún no tienes sitio web? 🤔\nSi no estás en internet, estás perdiendo ventas frente a tu competencia.\n¡Demos el salto con una página web profesional, rápida y que venda por ti 24/7! 🚀\n👉 ¡Escríbeme al privado y hagámoslo realidad hoy mismo! 📲\n(Acepto trato con admin)",
+            "¿Sientes que tu producto es increíble pero a tu marca le falta verse más profesional? 🚨\nVender solo por redes sociales limita tu crecimiento y la confianza de tus clientes.\nTe diseño un sitio web moderno, rápido y con la imagen de gran empresa que mereces. 💻\n👉 ¡Mándame un mensaje al privado y empecemos tu proyecto hoy! 📲\n(Acepto trato con admin)",
+            "¿Tus clientes te buscan en internet y terminan comprándole a tu competencia? 🔍\nTener un sitio web propio ya no es un lujo, es el paso obligatorio para crecer.\nMe encargo de la programación y el diseño para que tu marca destaque de inmediato. ⚡\n👉 ¡Envíame un mensaje al privado y te asesoro sin compromiso! 💬\n(Acepto trato con admin)",
+            "¿Tu negocio está creciendo rápido pero sigues dependiendo solo de Instagram? 📈\nNo le pongas un techo a tus ventas ni dejes que otros se lleven a tu público.\nConstruyo sitios web a la medida, eficientes y listos para convertir visitas en clientes. 🚀\n👉 ¡Escríbeme al WhatsApp y llevemos tu negocio al mundo digital! ✨\n(Acepto trato con admin)"
         ]
     ],
     rutaImagen: path.join(__dirname, 'oferta.png'), 
@@ -64,7 +35,7 @@ const CONFIGURACION = {
     tiempoEsperaMaxSegundos: 15,       // ⏱️ Espera máxima entre grupos (Varía aleatoriamente entre 12 y 15s)
     tiempoMaximoEnvioSegundos: 60,     // ⏱️ Tiempo límite para enviar (aumentado para conexiones lentas)
     horasDeEsperaEntreCiclos: [
-        0, 1.5, 1.5, 1.5, 1.5
+        0, 1.5, 1.5, 1.5
     ],
     gruposDestino: [
         "120363408267789482@g.us|||Prueba1",
@@ -336,8 +307,7 @@ function limpiarEstado() {
 const cliente = new Client({
     authStrategy: new LocalAuth(), 
     webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+        type: 'local',
     },
     puppeteer: {
         headless: true, 
@@ -349,17 +319,13 @@ const cliente = new Client({
             '--disable-gpu',
             '--no-first-run',        
             '--no-zygote',
-            '--disable-features=ServiceWorker',
-            // ⚡ OPTIMIZACIONES DE MEMORIA RAM EN CHROME (Permite procesar adjuntos)
-            '--js-flags=--max-old-space-size=512',   // Limita la memoria interna de Chrome a 512 MB
-            '--renderer-process-limit=1',          // Limita a 1 subproceso de renderizado
             '--disable-extensions',
             '--disable-notifications',
             '--mute-audio',
             '--no-default-browser-check',
         ],
-        timeout: 180000,        // 3 minutos para conexiones lentas
-        protocolTimeout: 240000 // 4 minutos de protocol timeout
+        timeout: 120000,
+        protocolTimeout: 300000
     }
 });
 
@@ -454,71 +420,172 @@ async function esperarEstabilidadDePagina() {
     }
 }
 
-// Lee grupos DIRECTAMENTE del IndexedDB de WhatsApp Web
-// (bypasa el getChats() roto por incompatibilidad con WW 2.3000+)
-async function obtenerChatsSeguro(clienteBase, intentos = 8) {
+// Lee grupos de forma rápida y segura sin quedarse pegado
+async function obtenerChatsSeguro(clienteBase, intentos = 3) {
+    // 1. Intento ultrarrápido desde la memoria viva de WhatsApp Web (Store)
+    try {
+        console.log(`🔍 Consultando grupos en memoria viva de WhatsApp...`);
+        const gruposMemoria = await clienteBase.pupPage.evaluate(() => {
+            try {
+                let chatsRaw = [];
+                if (window.Store && window.Store.Chat) {
+                    if (typeof window.Store.Chat.getModelsArray === 'function') {
+                        chatsRaw = window.Store.Chat.getModelsArray();
+                    } else if (Array.isArray(window.Store.Chat.models)) {
+                        chatsRaw = window.Store.Chat.models;
+                    }
+                }
+                if (chatsRaw && chatsRaw.length > 0) {
+                    return chatsRaw
+                        .filter(c => c && (c.isGroup || (c.id && (c.id._serialized || String(c.id)).includes('@g.us'))))
+                        .map(c => ({
+                            id: { _serialized: c.id && c.id._serialized ? c.id._serialized : String(c.id) },
+                            name: c.name || c.formattedTitle || c.title || c.displayName || '',
+                            isGroup: true,
+                            isReadOnly: c.isReadOnly || false
+                        }));
+                }
+            } catch (e) {}
+            return null;
+        });
+
+        if (gruposMemoria && gruposMemoria.length > 0) {
+            console.log(`✅ ${gruposMemoria.length} grupos cargados instantáneamente desde la memoria.`);
+            return gruposMemoria;
+        }
+    } catch (e) {
+        console.log(`ℹ️ Memoria viva aún no disponible, intentando base de datos local...`);
+    }
+
+    // 2. Si no están en memoria, intentar leer de IndexedDB con timeout estricto de 5s para no congelar
     for (let i = 1; i <= intentos; i++) {
         try {
-            console.log(`⏳ [Intento ${i}/${intentos}] Leyendo grupos del IndexedDB...`);
+            console.log(`⏳ [Intento ${i}/${intentos}] Consultando IndexedDB...`);
             
-            await esperarEstabilidadDePagina();
-            await esperar(2000);
-            
-            // 🧠 CURSOR en lugar de getAll() — solo carga grupos en memoria, no todos los chats
-            const grupos = await clienteBase.pupPage.evaluate(async () => {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open('model-storage');
-                    req.onerror = () => reject(new Error('No se pudo abrir model-storage: ' + req.error));
-                    req.onsuccess = (evt) => {
-                        const db = evt.target.result;
-                        if (!db.objectStoreNames.contains('chat')) {
-                            reject(new Error('Store "chat" no encontrado en model-storage'));
-                            return;
-                        }
-                        const tx = db.transaction('chat', 'readonly');
-                        const store = tx.objectStore('chat');
-                        const soloGrupos = [];
-                        const cursorReq = store.openCursor();
-                        cursorReq.onsuccess = (e) => {
-                            const cursor = e.target.result;
-                            if (cursor) {
-                                const c = cursor.value;
-                                const id = typeof c.id === 'string' ? c.id
-                                         : (c.id && c.id._serialized ? c.id._serialized : '');
-                                // Solo guardar si es grupo — descarta chats normales al instante
-                                if (id.includes('@g.us')) {
-                                    soloGrupos.push({
-                                        id: { _serialized: id },
-                                        name: c.name || c.formattedTitle || c.displayName || '',
-                                        isGroup: true,
-                                        isReadOnly: c.isReadOnly || false
-                                    });
-                                }
-                                cursor.continue();
-                            } else {
-                                resolve(soloGrupos);
+            const grupos = await Promise.race([
+                clienteBase.pupPage.evaluate(async () => {
+                    return new Promise((resolve, reject) => {
+                        let finalizado = false;
+                        const timer = setTimeout(() => {
+                            if (!finalizado) {
+                                finalizado = true;
+                                reject(new Error('TIMEOUT_IDB'));
                             }
-                        };
-                        cursorReq.onerror = () => reject(new Error('Error al recorrer IDB: ' + cursorReq.error));
-                    };
-                });
-            });
+                        }, 4500);
+
+                        try {
+                            const req = indexedDB.open('model-storage');
+                            req.onblocked = () => {
+                                if (!finalizado) {
+                                    finalizado = true;
+                                    clearTimeout(timer);
+                                    reject(new Error('IDB_BLOQUEADO'));
+                                }
+                            };
+                            req.onerror = () => {
+                                if (!finalizado) {
+                                    finalizado = true;
+                                    clearTimeout(timer);
+                                    reject(new Error('Error al abrir IDB'));
+                                }
+                            };
+                            req.onsuccess = (evt) => {
+                                const db = evt.target.result;
+                                try {
+                                    if (!db.objectStoreNames.contains('chat')) {
+                                        if (!finalizado) {
+                                            finalizado = true;
+                                            clearTimeout(timer);
+                                            db.close();
+                                            reject(new Error('Store chat no encontrado'));
+                                        }
+                                        return;
+                                    }
+                                    const tx = db.transaction('chat', 'readonly');
+                                    const store = tx.objectStore('chat');
+                                    const soloGrupos = [];
+                                    const cursorReq = store.openCursor();
+                                    cursorReq.onsuccess = (e) => {
+                                        const cursor = e.target.result;
+                                        if (cursor) {
+                                            const c = cursor.value;
+                                            const id = typeof c.id === 'string' ? c.id
+                                                     : (c.id && c.id._serialized ? c.id._serialized : '');
+                                            if (id.includes('@g.us')) {
+                                                soloGrupos.push({
+                                                    id: { _serialized: id },
+                                                    name: c.name || c.formattedTitle || c.displayName || '',
+                                                    isGroup: true,
+                                                    isReadOnly: c.isReadOnly || false
+                                                });
+                                            }
+                                            cursor.continue();
+                                        } else {
+                                            if (!finalizado) {
+                                                finalizado = true;
+                                                clearTimeout(timer);
+                                                db.close();
+                                                resolve(soloGrupos);
+                                            }
+                                        }
+                                    };
+                                    cursorReq.onerror = () => {
+                                        if (!finalizado) {
+                                            finalizado = true;
+                                            clearTimeout(timer);
+                                            db.close();
+                                            reject(new Error('Error en cursor IDB'));
+                                        }
+                                    };
+                                } catch (txErr) {
+                                    if (!finalizado) {
+                                        finalizado = true;
+                                        clearTimeout(timer);
+                                        db.close();
+                                        reject(txErr);
+                                    }
+                                }
+                            };
+                        } catch (openErr) {
+                            if (!finalizado) {
+                                finalizado = true;
+                                clearTimeout(timer);
+                                reject(openErr);
+                            }
+                        }
+                    });
+                }),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_PUPPETEER')), 5500))
+            ]);
             
-            if (!grupos || grupos.length === 0) {
-                throw new Error('IndexedDB vacío, WhatsApp aún sincronizando...');
+            if (grupos && grupos.length > 0) {
+                console.log(`✅ ${grupos.length} grupos encontrados en IndexedDB.`);
+                return grupos;
             }
 
-            console.log(`✅ ${grupos.length} grupos encontrados en IndexedDB.`);
-            return grupos;
-
         } catch (error) {
-            const msg = error.message || String(error);
-            console.log(`\n⚠️ Aviso de sistema: ${msg}`);
-            if (i === intentos) throw new Error('Tiempo agotado. No se pudieron cargar los grupos desde IDB.'); 
-            console.log(`⏳ Pausando 15 segundos antes del siguiente intento...\n`);
-            await esperar(15000); 
+            console.log(`   ℹ️ Intento ${i}: ${error.message}`);
+            if (i < intentos) await esperar(1500);
         }
     }
+
+    // 3. Fallback Seguro: Si la base está ocupada, usar directamente la lista ya configurada
+    console.log(`📋 Utilizando lista directa de grupos (${CONFIGURACION.gruposDestino.length} grupos configurados)...`);
+    return CONFIGURACION.gruposDestino.map(linea => {
+        let id = linea;
+        let nombre = linea;
+        if (linea.includes('|||')) {
+            const p = linea.split('|||');
+            id = p[0];
+            nombre = p[1];
+        }
+        return {
+            id: { _serialized: id },
+            name: nombre,
+            isGroup: true,
+            isReadOnly: false
+        };
+    });
 }
 
 cliente.on('qr', (qrCode) => {
@@ -526,21 +593,40 @@ cliente.on('qr', (qrCode) => {
     qrcode.generate(qrCode, { small: true });
 });
 
-cliente.on('ready', () => {
+cliente.on('ready', async () => {
     console.log('✅ ¡El bot ha iniciado sesión correctamente y la sesión está lista!');
     
+    // Inyectar blindaje en el navegador para evitar errores internos de serialización de mensajes multimedia
+    try {
+        await cliente.pupPage.evaluate(() => {
+            if (window.WWebJS) {
+                const origGetMessageModel = window.WWebJS.getMessageModel;
+                window.WWebJS.getMessageModel = function(message) {
+                    try {
+                        return origGetMessageModel ? origGetMessageModel(message) : message;
+                    } catch(e) {
+                        return {
+                            id: message?.id ? (message.id._serialized ? message.id : { _serialized: String(message.id) }) : { _serialized: 'msg_' + Date.now() },
+                            body: message?.caption || message?.body || '',
+                            type: message?.type || 'chat'
+                        };
+                    }
+                };
+            }
+        });
+    } catch(e) {}
+
     // 🚦 MONITOREO DE ESTABILIDAD (solo se registra UNA vez)
-    // El bloqueo de imágenes y contención de memoria se gestiona nativamente en Chrome
     if (!interceptorActivo) {
         interceptorActivo = true;
         cliente.pupPage.on('framenavigated', (frame) => {
             if (frame === cliente.pupPage.mainFrame()) {
                 paginaNavegando = true;
                 ultimaNavegacion = Date.now();
-                setTimeout(() => { paginaNavegando = false; }, 10000);
+                setTimeout(() => { paginaNavegando = false; }, 8000);
             }
         });
-        console.log('🚦 Optimizador activo: memoria limitada y recursos pesados suprimidos nativamente.');
+        console.log('🚦 Optimizador activo: memoria monitoreada y recursos pesados controlados.');
     }
     
     if (!fs.existsSync(CONFIGURACION.rutaImagen)) {
@@ -584,14 +670,12 @@ async function iniciarMotorDeEnvios() {
 
     // ================================================================
     // 🗂️ LECTURA ÚNICA DE GRUPOS AL INICIO
-    // Los grupos se leen UNA SOLA VEZ y se reutilizan en todos los ciclos.
-    // Evita que Chrome se bloquee re-leyendo IDB en cada ciclo.
     // ================================================================
-    console.log('⏳ Esperando 120 segundos para que WhatsApp sincronice los grupos...');
-    await esperar(120000);
+    console.log('⏳ Esperando 10 segundos para estabilizar la sesión de WhatsApp...');
+    await esperar(10000);
 
-    console.log('🗂️ Leyendo lista de grupos (solo una vez)...');
-    const todosLosChats = await obtenerChatsSeguro(cliente, 8);
+    console.log('🗂️ Preparando lista de grupos...');
+    const todosLosChats = await obtenerChatsSeguro(cliente, 3);
     const soloGrupos = todosLosChats.filter(chat => chat.isGroup);
 
     // Construir diccionario de búsqueda rápida
@@ -632,8 +716,6 @@ async function iniciarMotorDeEnvios() {
             console.log(`\n🚀 INICIANDO CICLO #${numeroDeCiclo}... [${hora()}]`);
             
             try {
-                const imagenMultimedia = MessageMedia.fromFilePath(CONFIGURACION.rutaImagen);
-
                     // Helper: enviar con timeout de 30s para no quedarse colgado
                     const enviarConTimeout = (promesa, segundos = 30) => Promise.race([
                         promesa,
@@ -721,18 +803,22 @@ async function iniciarMotorDeEnvios() {
                             try {
                                 console.log(`📤 [${hora()}] Ciclo #${numeroDeCiclo} | Enviando (${contadorGrupoActual}/${totalGrupos}): ${nombreGrupoBuscado}`);
                                 
+                                // Cargar imagen en fresco por cada envío para evitar que WhatsApp-web.js corrompa el objeto cacheado
+                                const imagenMultimediaFresca = MessageMedia.fromFilePath(CONFIGURACION.rutaImagen);
+
+                                // Envío unificado: Imagen con pie de foto (Caption) en un solo mensaje
                                 await enviarConTimeout(
-                                    cliente.sendMessage(grupoEncontrado.id._serialized, imagenMultimedia, { caption: mensajeFinal }),
+                                    cliente.sendMessage(grupoEncontrado.id._serialized, imagenMultimediaFresca, { caption: mensajeFinal }),
                                     CONFIGURACION.tiempoMaximoEnvioSegundos
                                 );
+
                                 gruposEnviadosEnEsteCiclo.add(grupoEncontrado.id._serialized);
                                 guardarEstado(i, gruposEnviadosEnEsteCiclo);
                                 reporteExitosos.push(nombreGrupoBuscado);
                                 enviosConsecutivos++;
                                 timeoutsConsecutivos = 0;
                                 envioExitoso = true;
-                                console.log(`   ✅ Enviado a: ${nombreGrupoBuscado} [${hora()}]`);
-
+                                console.log(`   ✅ Enviado (Foto + Texto): ${nombreGrupoBuscado} [${hora()}]`);
                             } catch (error) {
                                 const esTimeout = error.message === 'TIMEOUT_ENVIO'
                                     || error.message?.includes('callFunctionOn timed out')
@@ -740,49 +826,28 @@ async function iniciarMotorDeEnvios() {
 
                                 if (esTimeout) {
                                     timeoutsConsecutivos++;
-                                    console.log(`   ⏱️ Timeout en ${nombreGrupoBuscado} — intentando solo texto...`);
+                                    console.log(`   ⏱️ Timeout en ${nombreGrupoBuscado}: ${error.message}`);
                                 } else {
-                                    console.log(`   ⚠️ Error en ${nombreGrupoBuscado}: ${error.message?.substring(0, 60)}`);
+                                    console.log(`   ⚠️ Error en ${nombreGrupoBuscado}: ${error.message}`);
+                                    if (error.stack) console.log(`      Detalle: ${error.stack.split('\n').slice(0, 2).join(' ')}`);
                                 }
 
-                                try {
-                                    // Fallback: intentar enviar solo texto
-                                    await enviarConTimeout(
-                                        cliente.sendMessage(grupoEncontrado.id._serialized, mensajeFinal),
-                                        CONFIGURACION.tiempoMaximoEnvioSegundos
-                                    );
-                                    gruposEnviadosEnEsteCiclo.add(grupoEncontrado.id._serialized);
-                                    guardarEstado(i, gruposEnviadosEnEsteCiclo);
-                                    reporteExitosos.push(nombreGrupoBuscado + ' (Solo Texto)');
-                                    enviosConsecutivos++;
-                                    timeoutsConsecutivos = 0;
-                                    envioExitoso = true;
-                                    console.log(`   ✅ (Solo texto) ${nombreGrupoBuscado} [${hora()}]`);
-                                } catch (fallbackError) {
-                                    if (reintentosRestantes > 0) {
-                                        console.log(`   ⏳ Falla de envío. Pausando 1 minuto con 30 segundos y limpiando caché para reintentar...`);
-                                        
-                                        // Limpieza de memoria (V8 + Node.js)
-                                        try {
-                                            await cliente.pupPage.evaluate(() => { if (window.gc) window.gc(); });
-                                        } catch(e) {}
-                                        if (typeof global.gc === 'function') global.gc();
-
-                                        await esperar(90000); // Esperar 1 minuto y 30 segundos
-                                        reintentosRestantes--;
-                                    } else {
-                                        console.log(`   ❌ Grupo saltado definitivamente (falla persistente).`);
-                                        reporteNoEncontrado.push(nombreGrupoBuscado + (esTimeout ? ' [timeout]' : ' [error]'));
-                                        
-                                        if (timeoutsConsecutivos >= 5) {
-                                            console.log(`\n========================================================`);
-                                            console.log(`🔄 [¡EMERGENCIA DE MEMORIA!] Chrome saturado (${timeoutsConsecutivos} fallas seguidas).`);
-                                            console.log(`   El estado ha sido guardado. Reiniciando bot automáticamente...`);
-                                            console.log(`========================================================\n`);
-                                            process.exit(2);
-                                        }
-                                        break; // Salimos del while y pasamos al siguiente grupo
+                                if (reintentosRestantes > 0) {
+                                    console.log(`   ⏳ Reintentando envío de (Foto + Texto) en 15 segundos...`);
+                                    await esperar(15000);
+                                    reintentosRestantes--;
+                                } else {
+                                    console.log(`   ❌ Grupo saltado definitivamente (falla persistente en envío multimedia).`);
+                                    reporteNoEncontrado.push(nombreGrupoBuscado + (esTimeout ? ' [timeout]' : ' [error]'));
+                                    
+                                    if (timeoutsConsecutivos >= 5) {
+                                        console.log(`\n========================================================`);
+                                        console.log(`🔄 [¡EMERGENCIA DE MEMORIA!] Chrome saturado (${timeoutsConsecutivos} fallas seguidas).`);
+                                        console.log(`   El estado ha sido guardado. Reiniciando bot automáticamente...`);
+                                        console.log(`========================================================\n`);
+                                        process.exit(2);
                                     }
+                                    break; // Salir del while y continuar con el siguiente grupo
                                 }
                             }
                         }
