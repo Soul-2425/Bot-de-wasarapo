@@ -69,9 +69,39 @@ if (!code.includes('delete mediaOptions.__x_id')) {
     patched = true;
 }
 
+// 3. Blindaje contra Error: t en serialización de mensajes
+if (!code.includes('eSerialization')) {
+    code = code.replace(
+        `    window.WWebJS.getMessageModel = (message) => {
+        const msg = message.serialize();`,
+        `    window.WWebJS.getMessageModel = (message) => {
+        if (!message) return null;
+        try {
+            const msg = typeof message.serialize === 'function' ? message.serialize() : message;`
+    );
+    code = code.replace(
+        `        delete msg.pendingAckUpdate;
+
+        return msg;
+    };`,
+        `        delete msg.pendingAckUpdate;
+
+        return msg;
+        } catch (eSerialization) {
+            return {
+                id: message?.id ? (message.id._serialized ? message.id : { _serialized: String(message.id) }) : { _serialized: 'msg_' + Date.now() },
+                body: message?.caption || message?.body || '',
+                type: message?.type || 'chat'
+            };
+        }
+    };`
+    );
+    patched = true;
+}
+
 if (patched) {
     fs.writeFileSync(rutaUtils, code, 'utf8');
-    console.log('✅ Parche multimedia aplicado correctamente a whatsapp-web.js.');
+    console.log('✅ Parche multimedia y de serialización aplicado correctamente a whatsapp-web.js.');
 } else {
     console.log('✅ whatsapp-web.js ya cuenta con el parche multimedia.');
 }

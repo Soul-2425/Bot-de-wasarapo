@@ -7,11 +7,15 @@ node_modules/
 estado.json
 estado_envio.json
 
+# Logs y registros
+logs/
+*.log
+
 # Archivos temporales de Office o SO
 ~$*
 Thumbs.db
 .DS_Store
 
-# Archivos de depuración y variables de entorno (si los hubiera)
+# Archivos de depuración y variables de entorno
 .env
-*.log
+

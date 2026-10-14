@@ -1,25 +1,45 @@
 @echo off
 set NODE_OPTIONS=--max-old-space-size=1024 --expose-gc
+title Bot de WhatsApp - Publicador Automatico
+cls
 
-:inicio
-echo ========================================
-echo   BOT DE WHATSAPP - Iniciando (Auto-Recovery)
-echo ========================================
+echo ================================================================
+echo   BOT DE WHATSAPP - MODO SUPERVISOR RESILIENTE
+echo ================================================================
+echo   * Este supervisor mantiene el bot activo y vigilado.
+echo   * Si ocurre un corte de conexion o fallo, se auto-recupera.
+echo   * Para detener el bot por completo, cierra esta ventana.
+echo ================================================================
+echo.
+
+:bucle_principal
+echo [%TIME%] Iniciando motor del bot de WhatsApp...
 node bot.js
 
-if %errorlevel% equ 2 (
+set CODIGO_SALIDA=%ERRORLEVEL%
+echo.
+echo [%TIME%] [AVISO] El proceso del bot finalizo con codigo: %CODIGO_SALIDA%
+
+if %CODIGO_SALIDA% EQU 0 (
     echo.
-    echo ==============================================================
-    echo  [!] MEMORIA SATURADA - REINICIO TACTICO INICIADO
-    echo  El bot se reiniciara automaticamente para liberar RAM...
-    echo ==============================================================
-    taskkill /F /IM chrome.exe /T >nul 2>&1
-    timeout /t 5 /nobreak
-    goto inicio
+    echo [OK] El bot ha completado su trabajo exitosamente.
+    echo Presiona cualquier tecla para cerrar esta ventana...
+    pause >nul
+    exit /b 0
 )
 
-echo.
-echo ========================================
-echo   TODOS LOS CICLOS TERMINADOS
-echo ========================================
-pause
+if %CODIGO_SALIDA% EQU 1 (
+    echo.
+    echo [AVISO] El bot se detuvo por un archivo faltante o error de configuracion.
+    echo Revisa el mensaje mostrado arriba.
+    echo Presiona cualquier tecla para reintentar...
+    pause >nul
+)
+
+echo [%TIME%] Limpiando posibles procesos residuales de Chrome...
+taskkill /F /IM chrome.exe >nul 2>&1
+
+echo [%TIME%] Reanudando bot en 5 segundos...
+timeout /t 5 /nobreak >nul
+cls
+goto bucle_principal
