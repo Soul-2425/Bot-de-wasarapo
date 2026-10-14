@@ -295,12 +295,34 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                 });
             });
 
+            let timerImprimirQR = null;
+            let yaAutenticado = false;
+
             nuevoCliente.on('qr', (qrCode) => {
-                console.log('\n📱 Escanea este código QR con tu WhatsApp:');
-                qrcode.generate(qrCode, { small: true });
+                if (yaAutenticado) return;
+                const tieneSesionPrevia = fs.existsSync(path.join(__dirname, '.wwebjs_auth', 'session'));
+                if (tieneSesionPrevia) {
+                    if (timerImprimirQR) clearTimeout(timerImprimirQR);
+                    timerImprimirQR = setTimeout(() => {
+                        if (!yaAutenticado) {
+                            console.log('\n📱 Escanea este código QR con tu WhatsApp:');
+                            qrcode.generate(qrCode, { small: true });
+                        }
+                    }, 2500);
+                } else {
+                    console.log('\n📱 Escanea este código QR con tu WhatsApp:');
+                    qrcode.generate(qrCode, { small: true });
+                }
             });
 
             nuevoCliente.on('authenticated', () => {
+                yaAutenticado = true;
+                if (timerImprimirQR) clearTimeout(timerImprimirQR);
+                console.clear();
+                console.log('\n================================================================');
+                console.log('  ✅ ¡SESIÓN ACTIVA! Conectado a WhatsApp correctamente.       ');
+                console.log('  ℹ️  No necesitas escanear el código QR.                      ');
+                console.log('================================================================\n');
                 logger.info('🔐 Credenciales de sesión verificadas. Sincronizando chats...');
             });
 
@@ -725,32 +747,47 @@ async function iniciarMotorDeEnvios() {
             const numeroDeCiclo = i + 1;
 
             if (horas > 0) {
-                const textoEspera = horas < 1 ? `${Math.round(horas * 60)} min` : `${horas} hrs`;
-                const horaReanudacion = new Date(Date.now() + horas * 60 * 60 * 1000)
-                    .toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
-                logger.info(`💤 Reposo entre ciclos activado (${textoEspera}). Próximo ciclo a las: ${horaReanudacion}`);
-                logger.info('Liberando navegador Chrome durante el reposo para ahorrar RAM y garantizar sesión limpia...');
-                try {
-                    await cliente.destroy();
-                    cliente = null;
-                } catch (eDestroy) {}
-
-                guardarEstado(i, new Set());
-
                 const totalMs = horas * 60 * 60 * 1000;
-                const inicioEspera = Date.now();
-                while (Date.now() - inicioEspera < totalMs) {
-                    const pasoMs = Math.min(10 * 60 * 1000, totalMs - (Date.now() - inicioEspera));
-                    await esperar(pasoMs);
-                    const restanteMin = Math.round((totalMs - (Date.now() - inicioEspera)) / 60000);
-                    if (restanteMin > 0) {
-                        logger.info(`⏳ Reposo entre ciclos en curso: faltan aprox. ${restanteMin} minutos (Reanudación: ${horaReanudacion})`);
-                    }
-                }
+                const textoEspera = horas < 1 ? `${Math.round(horas * 60)} min` : `${horas} hrs`;
 
-                logger.info(`🔔 ¡Tiempo de reposo cumplido! Reconectando WhatsApp para el Ciclo #${numeroDeCiclo}...`);
-                await iniciarNuevoCliente();
-                await actualizarDiccionarioGrupos();
+                // Calcular si ya transcurrió parte o la totalidad del reposo mientras el bot estuvo inactivo
+                const tiempoYaTranscurrido = (estadoActual && estadoActual.cicloIndex === i && estadoActual.timestamp)
+                    ? Math.max(0, Date.now() - estadoActual.timestamp)
+                    : 0;
+
+                const tiempoRestanteRealMs = Math.max(0, totalMs - tiempoYaTranscurrido);
+
+                if (tiempoRestanteRealMs <= 0) {
+                    logger.info(`⚡ El tiempo de reposo de ${textoEspera} ya fue cumplido previamente. Continuando con el Ciclo #${numeroDeCiclo} de inmediato...`);
+                } else {
+                    const horaReanudacion = new Date(Date.now() + tiempoRestanteRealMs)
+                        .toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+                    const restanteMinutosInicial = Math.round(tiempoRestanteRealMs / 60000);
+                    logger.info(`💤 Reposo entre ciclos activado (${textoEspera} programados, restan aprox. ${restanteMinutosInicial} min). Próximo ciclo a las: ${horaReanudacion}`);
+                    logger.info('Liberando navegador Chrome durante el reposo para ahorrar RAM y garantizar sesión limpia...');
+                    try {
+                        await cliente.destroy();
+                        cliente = null;
+                    } catch (eDestroy) {}
+
+                    if (!estadoActual || estadoActual.cicloIndex !== i || !estadoActual.timestamp) {
+                        guardarEstado(i, new Set());
+                    }
+
+                    const inicioEspera = Date.now();
+                    while (Date.now() - inicioEspera < tiempoRestanteRealMs) {
+                        const pasoMs = Math.min(10 * 60 * 1000, tiempoRestanteRealMs - (Date.now() - inicioEspera));
+                        await esperar(pasoMs);
+                        const restanteMin = Math.round((tiempoRestanteRealMs - (Date.now() - inicioEspera)) / 60000);
+                        if (restanteMin > 0) {
+                            logger.info(`⏳ Reposo entre ciclos en curso: faltan aprox. ${restanteMin} minutos (Reanudación: ${horaReanudacion})`);
+                        }
+                    }
+
+                    logger.info(`🔔 ¡Tiempo de reposo cumplido! Reconectando WhatsApp para el Ciclo #${numeroDeCiclo}...`);
+                    await iniciarNuevoCliente();
+                    await actualizarDiccionarioGrupos();
+                }
             }
 
             const totalGrupos = gruposDestino.length;

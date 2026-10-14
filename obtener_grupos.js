@@ -169,12 +169,34 @@ let cliente = null;
 let extraccionIniciada = false;
 
 function registrarEventos(cli) {
+    let timerImprimirQR = null;
+    let yaAutenticado = false;
+
     cli.on('qr', (qrCode) => {
-        console.log('\n📱 Escanea el siguiente código QR con tu WhatsApp:');
-        qrcode.generate(qrCode, { small: true });
+        if (yaAutenticado) return;
+        const tieneSesionPrevia = fs.existsSync(path.join(__dirname, '.wwebjs_auth', 'session'));
+        if (tieneSesionPrevia) {
+            if (timerImprimirQR) clearTimeout(timerImprimirQR);
+            timerImprimirQR = setTimeout(() => {
+                if (!yaAutenticado) {
+                    console.log('\n📱 Escanea el siguiente código QR con tu WhatsApp:');
+                    qrcode.generate(qrCode, { small: true });
+                }
+            }, 2500);
+        } else {
+            console.log('\n📱 Escanea el siguiente código QR con tu WhatsApp:');
+            qrcode.generate(qrCode, { small: true });
+        }
     });
 
     cli.on('authenticated', () => {
+        yaAutenticado = true;
+        if (timerImprimirQR) clearTimeout(timerImprimirQR);
+        console.clear();
+        console.log('\n================================================================');
+        console.log('  ✅ ¡SESIÓN ACTIVA! Conectado a WhatsApp correctamente.       ');
+        console.log('  ℹ️  No necesitas escanear el código QR.                      ');
+        console.log('================================================================\n');
         console.log('🔐 Sesión autenticada correctamente.');
     });
 
