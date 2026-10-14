@@ -76,11 +76,58 @@ const logger = {
         registrarEnArchivo(`=== INICIO DE SESIÓN BOT DE WHATSAPP (Grupos: ${datos.totalGrupos}, RAM: ${datos.ramMB}MB) ===`);
     },
 
+    // Encabezado de fase claramente delimitado
+    faseHeader: (numero, titulo, descripcion = '') => {
+        const linea = '─'.repeat(78);
+        console.log(`\n${C.cyan}${C.bold}${linea}${C.reset}`);
+        console.log(` ${C.cyan}${C.bold}🔹 FASE ${numero}: ${titulo.toUpperCase()}${C.reset}`);
+        if (descripcion) {
+            console.log(`    ${C.dim}${descripcion}${C.reset}`);
+        }
+        console.log(`${C.cyan}${linea}${C.reset}`);
+        registrarEnArchivo(`--- FASE ${numero}: ${titulo} ---`);
+    },
+
+    faseFooter: () => {
+        const linea = '─'.repeat(78);
+        console.log(`${C.dim}${linea}${C.reset}\n`);
+    },
+
+    item: (etiqueta, valor, detalle = '') => {
+        const etiquetaFormateada = etiqueta.padEnd(20, ' ');
+        const textoDetalle = detalle ? ` ${C.dim}(${detalle})${C.reset}` : '';
+        console.log(`    ${C.cyan}• ${etiquetaFormateada}${C.reset} ${valor}${textoDetalle}`);
+        registrarEnArchivo(`  • ${etiqueta}: ${valor} ${detalle ? '(' + detalle + ')' : ''}`);
+    },
+
+    bannerSesionActiva: () => {
+        const linea = '═'.repeat(78);
+        console.log(`\n${C.green}${C.bold}${linea}${C.reset}`);
+        console.log(`   ${C.bold}✅  ¡SESIÓN ACTIVA Y CONECTADA!${C.reset}`);
+        console.log(`   ${C.dim}WhatsApp autenticado con éxito • No necesitas escanear ningún QR${C.reset}`);
+        console.log(`${C.green}${C.bold}${linea}${C.reset}\n`);
+    },
+
+    bannerReposo: ({ textoEspera, horaReanudacion, minutosRestantes, cicloSiguiente }) => {
+        const linea = '═'.repeat(78);
+        console.log(`\n${C.yellow}${C.bold}${linea}${C.reset}`);
+        console.log(`   ${C.bgYellow} 💤 REPOSO ENTRE CICLOS ACTIVADO (${textoEspera}) ${C.reset}`);
+        console.log(`${C.yellow}${linea}${C.reset}`);
+        console.log(`    ${C.cyan}• Siguiente ciclo:${C.reset}     ${C.bold}Ciclo #${cicloSiguiente}${C.reset}`);
+        console.log(`    ${C.cyan}• Hora de reanudación:${C.reset} ${C.bold}${horaReanudacion}${C.reset}`);
+        console.log(`    ${C.cyan}• Tiempo restante:${C.reset}     Aprox. ${minutosRestantes} minutos`);
+        console.log(`    ${C.cyan}• Memoria RAM:${C.reset}         Navegador Chrome liberado para descanso limpio`);
+        console.log(`    ${C.dim}• ¿Deseas saltar el reposo? Ejecuta 'reiniciar_ciclos.bat' para enviar ya.${C.reset}`);
+        console.log(`${C.yellow}${C.bold}${linea}${C.reset}\n`);
+        registrarEnArchivo(`[REPOSO] ${textoEspera} activo. Reanudación: ${horaReanudacion} (Ciclo #${cicloSiguiente})`);
+    },
+
     // Notificación de inicio de ciclo
     inicioCiclo: (numeroCiclo, totalCiclos, totalGrupos) => {
-        const sep = '─'.repeat(78);
+        const sep = '═'.repeat(78);
         console.log(`\n${C.magenta}${C.bold}${sep}${C.reset}`);
-        console.log(` ${C.bold}🚀 INICIANDO CICLO #${numeroCiclo} ${C.dim}de ${totalCiclos}${C.reset}  |  Agenda de envíos: ${C.bold}${totalGrupos} grupos${C.reset}  [${hora()}]`);
+        console.log(` ${C.bold}🚀 FASE DE EMISIÓN: INICIANDO CICLO #${numeroCiclo} DE ${totalCiclos}${C.reset}`);
+        console.log(`    Agenda de envíos: ${C.bold}${totalGrupos} grupos${C.reset}  •  Hora: [${hora()}]`);
         console.log(`${C.magenta}${C.bold}${sep}${C.reset}\n`);
         registrarEnArchivo(`--- INICIO CICLO #${numeroCiclo} (${totalGrupos} grupos) ---`);
     },

@@ -265,7 +265,7 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
         try {
             await asegurarConexionInternet();
 
-            logger.info(`Iniciando motor de WhatsApp y Chrome... [Intento ${intento}/${maxIntentos}]`);
+            logger.faseHeader(1, 'Autenticación y Conexión con WhatsApp', `Iniciando motor de WhatsApp y Chrome [Intento ${intento}/${maxIntentos}]`);
             if (cliente) {
                 try { await cliente.destroy(); } catch (e) {}
                 cliente = null;
@@ -319,18 +319,15 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                 yaAutenticado = true;
                 if (timerImprimirQR) clearTimeout(timerImprimirQR);
                 console.clear();
-                console.log('\n================================================================');
-                console.log('  ✅ ¡SESIÓN ACTIVA! Conectado a WhatsApp correctamente.       ');
-                console.log('  ℹ️  No necesitas escanear el código QR.                      ');
-                console.log('================================================================\n');
-                logger.info('🔐 Credenciales de sesión verificadas. Sincronizando chats...');
+                logger.bannerSesionActiva();
+                logger.faseHeader(1, 'Autenticación y Conexión con WhatsApp', 'Conexión verificada con el teléfono, sincronizando historial...');
             });
 
             let ultimoPorcentaje = -1;
             nuevoCliente.on('loading_screen', async (percent, message) => {
                 if (percent === 100) {
                     if (ultimoPorcentaje !== 100) {
-                        logger.success('✅ Sincronización de chats completada al 100%. Accediendo a WhatsApp...');
+                        logger.item('Sincronización', '100% completada', 'Historial listo en navegador');
                         ultimoPorcentaje = 100;
                     }
                     try {
@@ -346,7 +343,7 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                 }
 
                 if (percent >= ultimoPorcentaje + 20) {
-                    logger.info(`⏳ Sincronizando chats con el teléfono: ${percent}%`);
+                    logger.item('Sincronizando chats', `${percent}%`, 'Descargando datos del teléfono');
                     ultimoPorcentaje = percent;
                 }
             });
@@ -405,7 +402,8 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
 
             await nuevoCliente.initialize();
             await readyPromise;
-            logger.success('¡Sesión de WhatsApp autenticada correctamente!');
+            logger.item('Estado de sesión', '✅ Conectada y lista', 'Handshake completado');
+            logger.faseFooter();
 
             // Blindaje de serialización multimedia
             try {
@@ -574,88 +572,74 @@ async function obtenerChatsSeguro(clienteBase, intentos = 3) {
         });
 
         if (gruposMemoria && gruposMemoria.length > 0) {
-            logger.success(`${gruposMemoria.length} grupos cargados instantáneamente desde memoria.`);
             return gruposMemoria;
         }
-    } catch (e) {
-        logger.info(`Memoria viva en preparación, consultando base de datos local IndexedDB...`);
-    }
+    } catch (e) {}
 
-    for (let i = 1; i <= intentos; i++) {
-        try {
-            logger.info(`[Intento ${i}/${intentos}] Consultando IndexedDB local...`);
-            const grupos = await Promise.race([
-                clienteBase.pupPage.evaluate(async () => {
-                    return new Promise((resolve, reject) => {
-                        let finalizado = false;
-                        const timer = setTimeout(() => {
-                            if (!finalizado) { finalizado = true; reject(new Error('TIMEOUT_IDB')); }
-                        }, 4500);
-
-                        try {
-                            const req = indexedDB.open('model-storage');
-                            req.onblocked = () => { if (!finalizado) { finalizado = true; clearTimeout(timer); reject(new Error('IDB_BLOQUEADO')); } };
-                            req.onerror = () => { if (!finalizado) { finalizado = true; clearTimeout(timer); reject(new Error('ERROR_IDB')); } };
-                            req.onsuccess = (evt) => {
-                                const db = evt.target.result;
-                                try {
-                                    if (!db.objectStoreNames.contains('chat')) {
-                                        if (!finalizado) { finalizado = true; clearTimeout(timer); db.close(); reject(new Error('NO_STORE_CHAT')); }
-                                        return;
-                                    }
-                                    const tx = db.transaction('chat', 'readonly');
-                                    const store = tx.objectStore('chat');
-                                    const soloGrupos = [];
-                                    const cursorReq = store.openCursor();
-                                    cursorReq.onsuccess = (e) => {
-                                        const cursor = e.target.result;
-                                        if (cursor) {
-                                            const c = cursor.value;
-                                            const id = typeof c.id === 'string' ? c.id : (c.id && c.id._serialized ? c.id._serialized : '');
-                                            if (id.includes('@g.us')) {
-                                                let nom = '';
-                                                if (typeof c.name === 'string') nom = c.name;
-                                                else if (typeof c.formattedTitle === 'string') nom = c.formattedTitle;
-                                                else if (typeof c.displayName === 'string') nom = c.displayName;
-                                                else if (c.name && typeof c.name === 'object') {
-                                                    nom = c.name.formattedTitle || c.name.name || '';
-                                                }
-                                                if (typeof nom !== 'string') nom = '';
-                                                soloGrupos.push({
-                                                    id: { _serialized: id },
-                                                    name: nom.trim(),
-                                                    isGroup: true,
-                                                    isReadOnly: Boolean(c.isReadOnly)
-                                                });
-                                            }
-                                            cursor.continue();
-                                        } else {
-                                            if (!finalizado) { finalizado = true; clearTimeout(timer); db.close(); resolve(soloGrupos); }
-                                        }
-                                    };
-                                    cursorReq.onerror = () => { if (!finalizado) { finalizado = true; clearTimeout(timer); db.close(); reject(new Error('ERROR_CURSOR')); } };
-                                } catch (txErr) {
-                                    if (!finalizado) { finalizado = true; clearTimeout(timer); db.close(); reject(txErr); }
+    // Intentar una lectura de IndexedDB si la memoria viva aún no ha hidratado
+    try {
+        const grupos = await Promise.race([
+            clienteBase.pupPage.evaluate(async () => {
+                return new Promise((resolve) => {
+                    const timer = setTimeout(() => resolve(null), 3500);
+                    try {
+                        const req = indexedDB.open('model-storage');
+                        req.onerror = () => { clearTimeout(timer); resolve(null); };
+                        req.onsuccess = (evt) => {
+                            const db = evt.target.result;
+                            try {
+                                if (!db.objectStoreNames.contains('chat')) {
+                                    clearTimeout(timer); db.close(); resolve(null);
+                                    return;
                                 }
-                            };
-                        } catch (openErr) {
-                            if (!finalizado) { finalizado = true; clearTimeout(timer); reject(openErr); }
-                        }
-                    });
-                }),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_PUPPETEER')), 5500))
-            ]);
+                                const tx = db.transaction('chat', 'readonly');
+                                const store = tx.objectStore('chat');
+                                const soloGrupos = [];
+                                const cursorReq = store.openCursor();
+                                cursorReq.onsuccess = (e) => {
+                                    const cursor = e.target.result;
+                                    if (cursor) {
+                                        const c = cursor.value;
+                                        const id = typeof c.id === 'string' ? c.id : (c.id && c.id._serialized ? c.id._serialized : '');
+                                        if (id.includes('@g.us')) {
+                                            let nom = '';
+                                            if (typeof c.name === 'string') nom = c.name;
+                                            else if (typeof c.formattedTitle === 'string') nom = c.formattedTitle;
+                                            else if (typeof c.displayName === 'string') nom = c.displayName;
+                                            else if (c.name && typeof c.name === 'object') {
+                                                nom = c.name.formattedTitle || c.name.name || '';
+                                            }
+                                            if (typeof nom !== 'string') nom = '';
+                                            soloGrupos.push({
+                                                id: { _serialized: id },
+                                                name: nom.trim(),
+                                                isGroup: true,
+                                                isReadOnly: Boolean(c.isReadOnly)
+                                            });
+                                        }
+                                        cursor.continue();
+                                    } else {
+                                        clearTimeout(timer); db.close(); resolve(soloGrupos);
+                                    }
+                                };
+                                cursorReq.onerror = () => { clearTimeout(timer); db.close(); resolve(null); };
+                            } catch (txErr) {
+                                clearTimeout(timer); db.close(); resolve(null);
+                            }
+                        };
+                    } catch (openErr) {
+                        clearTimeout(timer); resolve(null);
+                    }
+                });
+            }),
+            new Promise((resolve) => setTimeout(() => resolve(null), 4000))
+        ]);
 
-            if (grupos && grupos.length > 0) {
-                logger.success(`${grupos.length} grupos recuperados desde IndexedDB.`);
-                return grupos;
-            }
-        } catch (error) {
-            if (i < intentos) await esperar(1500);
+        if (grupos && grupos.length > 0) {
+            return grupos;
         }
-    }
+    } catch (error) {}
 
-    logger.info(`Utilizando lista directa de grupos (${gruposDestino.length} grupos configurados)...`);
     return gruposDestino.map(linea => {
         let id = linea, nombre = linea;
         if (linea.includes('|||')) {
@@ -674,8 +658,12 @@ async function iniciarMotorDeEnvios() {
     let continuarTrabajando = true;
     let contadorVueltasGlobales = 1;
 
-    logger.info('Estabilizando sesión de WhatsApp (10s)...');
+    // FASE 2: PREPARACIÓN DE RECURSOS Y BLINDAJES ANTI-BAN
+    logger.faseHeader(2, 'Preparación de Recursos y Blindajes Anti-Ban', 'Configuración de imagen, spintax y algoritmos de evasión');
+
+    logger.item('Estabilización', 'En curso (10s)...', 'Asentando sesión de WhatsApp');
     await esperar(10000);
+    logger.item('Estabilización', '✅ Completada', 'Sesión asentada');
 
     // Verificación de imagen publicitaria (Escudo Polimórfico)
     let imagenMultimediaCache = null;
@@ -685,17 +673,23 @@ async function iniciarMotorDeEnvios() {
         }
         if (CONFIGURACION.polimorfismoImagen !== false) {
             generarMediaPolimorfica(CONFIGURACION.rutaImagen);
-            logger.success(`Escudo Polimórfico activo: imagen (${path.basename(CONFIGURACION.rutaImagen)}) generará hashes únicos por grupo.`);
+            logger.item('Multimedia', path.basename(CONFIGURACION.rutaImagen), 'Escudo Polimórfico: generará hashes únicos por grupo');
         } else {
             imagenMultimediaCache = MessageMedia.fromFilePath(CONFIGURACION.rutaImagen);
-            logger.success(`Imagen publicitaria (${path.basename(CONFIGURACION.rutaImagen)}) cargada en memoria RAM.`);
+            logger.item('Multimedia', path.basename(CONFIGURACION.rutaImagen), 'Cargada en memoria RAM');
         }
     } catch (errImg) {
         logger.error('Error cargando imagen:', errImg);
         process.exit(1);
     }
 
-    // Indexar grupos
+    logger.item('Variantes de Texto', `${CONFIGURACION.textosPublicitarios.length} plantillas`, 'Spintax orgánico activo');
+    logger.item('Micro-Entropía', CONFIGURACION.entropiaInvisibleTexto !== false ? '✅ Blindada' : 'Inactiva', 'Inyección de caracteres invisibles');
+    logger.item('Simulación Tipeo', CONFIGURACION.simularEscribiendo ? '✅ Humana' : 'Inactiva', 'Tipeo orgánico proporcional');
+    logger.faseFooter();
+
+    // FASE 3: INDEXACIÓN DE GRUPOS DE DESTINO
+    logger.faseHeader(3, 'Indexación de Grupos de Destino', 'Vinculando chats para la agenda de difusión');
     let soloGrupos = [];
     const diccionarioGrupos = new Map();
 
@@ -725,13 +719,15 @@ async function iniciarMotorDeEnvios() {
                     if (limpio) diccionarioGrupos.set(limpio, g);
                 }
             });
-            logger.info(`Grupos sincronizados en diccionario: ${diccionarioGrupos.size} referencias.`);
+            logger.item('Agenda de grupos', `${gruposDestino.length} grupos configurados`, fuenteGrupos || 'mis_grupos.txt');
+            logger.item('Referencias en RAM', `${diccionarioGrupos.size} grupos vinculados`, 'Mapeo activo');
         } catch (eSync) {
             logger.warn(`Aviso: sincronización de grupos falló, usando mapeo directo: ${eSync.message}`);
         }
     }
 
     await actualizarDiccionarioGrupos();
+    logger.faseFooter();
 
     let estadoActual = cargarEstado();
     let indexCicloInicial = estadoActual.cicloIndex || 0;
@@ -763,8 +759,12 @@ async function iniciarMotorDeEnvios() {
                     const horaReanudacion = new Date(Date.now() + tiempoRestanteRealMs)
                         .toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
                     const restanteMinutosInicial = Math.round(tiempoRestanteRealMs / 60000);
-                    logger.info(`💤 Reposo entre ciclos activado (${textoEspera} programados, restan aprox. ${restanteMinutosInicial} min). Próximo ciclo a las: ${horaReanudacion}`);
-                    logger.info('Liberando navegador Chrome durante el reposo para ahorrar RAM y garantizar sesión limpia...');
+                    logger.bannerReposo({
+                        textoEspera,
+                        horaReanudacion,
+                        minutosRestantes: restanteMinutosInicial,
+                        cicloSiguiente: numeroDeCiclo
+                    });
                     try {
                         await cliente.destroy();
                         cliente = null;

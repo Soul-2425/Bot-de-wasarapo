@@ -227,15 +227,20 @@ function registrarEventos(cli) {
         if (extraccionIniciada) return;
         extraccionIniciada = true;
 
-    console.log('✅ Conectado a WhatsApp con éxito.');
-    await esperarEstabilizacionWhatsApp(cli);
+        console.log('\n────────────────────────────────────────────────────────────────────────');
+        console.log('  🌐 FASE 1: CONEXIÓN Y ESTABILIZACIÓN CON WHATSAPP');
+        console.log('────────────────────────────────────────────────────────────────────────');
+        console.log('  • Estado:            ✅ Conectado y autenticado con éxito');
+        console.log('  • Estabilización:    Asentando chats en el navegador...');
+        await esperarEstabilizacionWhatsApp(cli);
+        console.log('  • Estabilización:    ✅ Sesión lista para extracción');
+        console.log('────────────────────────────────────────────────────────────────────────\n');
 
-    let grupos = [];
+        let grupos = [];
 
-    // --- MÉTODO 1 (PRINCIPAL): Extracción ligera desde la memoria activa (Store) con Reintentos ---
-    // En lugar de usar getChats() (que consume mucha RAM y crashea), leemos directamente 
-    // la base de datos viva de WhatsApp Web.
-    console.log('🔍 Extrayendo grupos desde la memoria en vivo de WhatsApp...');
+        console.log('────────────────────────────────────────────────────────────────────────');
+        console.log('  🔍 FASE 2: EXTRACCIÓN DE GRUPOS EN MEMORIA');
+        console.log('────────────────────────────────────────────────────────────────────────');
     for (let intento = 1; intento <= 5; intento++) {
         try {
             if (intento > 1) {
