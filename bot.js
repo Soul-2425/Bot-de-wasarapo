@@ -173,6 +173,41 @@ function esperar(ms) {
     return new Promise(res => setTimeout(res, ms));
 }
 
+async function esperarEstabilizacionWhatsApp(cli, maxSegundos = 40) {
+    logger.item('Estabilización', 'Sincronizando chats en memoria viva...');
+    const inicio = Date.now();
+    let chatsDetectados = 0;
+
+    while ((Date.now() - inicio) < maxSegundos * 1000) {
+        try {
+            if (cli?.pupPage && !cli.pupPage.isClosed()) {
+                const info = await cli.pupPage.evaluate(() => {
+                    const collections = window.require ? window.require('WAWebCollections') : null;
+                    const chatCol = collections?.Chat || window.Store?.Chat;
+                    let count = 0;
+                    if (chatCol) {
+                        count = typeof chatCol.getModelsArray === 'function'
+                            ? chatCol.getModelsArray().length
+                            : (Array.isArray(chatCol.models) ? chatCol.models.length : 0);
+                    }
+                    return { count };
+                });
+
+                if (info && info.count > 0) {
+                    chatsDetectados = info.count;
+                    break;
+                }
+            }
+        } catch (e) {}
+        await esperar(2000);
+    }
+
+    // Esperar 4s adicionales para que el store asiente los modelos
+    await esperar(4000);
+    logger.item('Estabilización', '✅ Completada', `${chatsDetectados > 0 ? chatsDetectados + ' chats en memoria' : 'Sesión lista'}`);
+    return chatsDetectados > 0;
+}
+
 function preguntarAlUsuario(pregunta) {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -405,7 +440,7 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
             logger.item('Estado de sesión', '✅ Conectada y lista', 'Handshake completado');
             logger.faseFooter();
 
-            // Blindaje de serialización multimedia
+            // Blindaje de serialización multimedia y resolución de chats
             try {
                 await nuevoCliente.pupPage.evaluate(() => {
                     if (window.WWebJS) {
@@ -420,6 +455,62 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                                     type: message?.type || 'chat'
                                 };
                             }
+                        };
+
+                        const origGetChat = window.WWebJS.getChat;
+                        window.WWebJS.getChat = async function(chatId, options = {}) {
+                            const isChannel = /@\w*newsletter\b/.test(chatId);
+                            const widFactory = window.require ? window.require('WAWebWidFactory') : null;
+                            const collections = window.require ? window.require('WAWebCollections') : null;
+                            const chatWid = widFactory ? widFactory.createWid(chatId) : null;
+                            let chat = null;
+
+                            if (collections?.Chat) {
+                                chat = collections.Chat.get(chatWid) || collections.Chat.get(chatId) || (chatWid?._serialized ? collections.Chat.get(chatWid._serialized) : null);
+                                if (!chat && Array.isArray(collections.Chat.models)) {
+                                    chat = collections.Chat.models.find(m => {
+                                        const mId = m?.id?._serialized || String(m?.id || '');
+                                        return mId === chatId || (chatWid && mId === chatWid._serialized);
+                                    });
+                                }
+                                if (!chat && typeof collections.Chat.find === 'function' && chatWid) {
+                                    try { chat = await collections.Chat.find(chatWid); } catch (e) {}
+                                }
+                            }
+
+                            if (!chat && chatWid) {
+                                try {
+                                    const cmdModule = window.require ? window.require('WAWebCmd') : null;
+                                    const cmd = cmdModule?.Cmd || window.Store?.Cmd;
+                                    if (cmd && typeof cmd.openChatBottom === 'function') {
+                                        await cmd.openChatBottom({ chat: { id: chatWid } }).catch(() => {});
+                                        chat = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId);
+                                    } else if (cmd && typeof cmd.openChatAt === 'function') {
+                                        await cmd.openChatAt(chatWid).catch(() => {});
+                                        chat = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId);
+                                    }
+                                } catch (eCmd) {}
+                            }
+
+                            if (!chat && !String(chatId).endsWith('@g.us')) {
+                                try {
+                                    const findAction = window.require ? window.require('WAWebFindChatAction') : null;
+                                    if (findAction?.findOrCreateLatestChat && chatWid) {
+                                        chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
+                                    }
+                                } catch (eFC) {}
+                            }
+
+                            if (!chat && origGetChat) {
+                                try {
+                                    chat = await origGetChat(chatId, options);
+                                    if (chat) return chat;
+                                } catch (eOrig) {}
+                            }
+
+                            return (options.getAsModel !== false && chat && typeof window.WWebJS.getChatModel === 'function')
+                                ? await window.WWebJS.getChatModel(chat, { isChannel })
+                                : chat;
                         };
                     }
                 });
@@ -660,10 +751,7 @@ async function iniciarMotorDeEnvios() {
 
     // FASE 2: PREPARACIÓN DE RECURSOS Y BLINDAJES ANTI-BAN
     logger.faseHeader(2, 'Preparación de Recursos y Blindajes Anti-Ban', 'Configuración de imagen, spintax y algoritmos de evasión');
-
-    logger.item('Estabilización', 'En curso (10s)...', 'Asentando sesión de WhatsApp');
-    await esperar(10000);
-    logger.item('Estabilización', '✅ Completada', 'Sesión asentada');
+    await esperarEstabilizacionWhatsApp(cliente);
 
     // Verificación de imagen publicitaria (Escudo Polimórfico)
     let imagenMultimediaCache = null;
@@ -906,6 +994,36 @@ async function iniciarMotorDeEnvios() {
 
                     while (!envioExitoso) {
                         try {
+                            // Abrir y enfocar el chat en WhatsApp Web para montar su modelo en memoria viva
+                            try {
+                                if (cliente?.pupPage && !cliente.pupPage.isClosed()) {
+                                    await cliente.pupPage.evaluate(async (targetId) => {
+                                        if (!window.require) return;
+                                        try {
+                                            const widFactory = window.require('WAWebWidFactory');
+                                            const wid = widFactory ? widFactory.createWid(targetId) : null;
+                                            if (!wid) return;
+
+                                            const collections = window.require('WAWebCollections');
+                                            if (collections?.Chat?.find) {
+                                                await collections.Chat.find(wid).catch(() => {});
+                                            }
+
+                                            const cmdModule = window.require('WAWebCmd');
+                                            const cmd = cmdModule?.Cmd || window.Store?.Cmd;
+                                            if (cmd) {
+                                                if (typeof cmd.openChatBottom === 'function') {
+                                                    const chatObj = collections?.Chat?.get(wid) || { id: wid };
+                                                    await cmd.openChatBottom({ chat: chatObj }).catch(() => {});
+                                                } else if (typeof cmd.openChatAt === 'function') {
+                                                    await cmd.openChatAt(wid).catch(() => {});
+                                                }
+                                            }
+                                        } catch (eInnerMount) {}
+                                    }, grupoEncontrado.id._serialized);
+                                }
+                            } catch (eMount) {}
+
                             // Pausa previa de visualización del chat (humanización)
                             if (CONFIGURACION.pausaLecturaChat !== false) {
                                 const msLectura = calcularPausaLecturaHumana();
@@ -950,13 +1068,17 @@ async function iniciarMotorDeEnvios() {
 
                             // Envío con timeout y verificación de recepción en servidores de WhatsApp
                             const esperarConfirmacion = CONFIGURACION.esperarConfirmacionServidor !== false;
-                            await enviarConTimeout(
+                            const resEnvio = await enviarConTimeout(
                                 cliente.sendMessage(grupoEncontrado.id._serialized, mediaAEnviar, { 
                                     caption: mensajeFinal,
                                     waitUntilMsgSent: esperarConfirmacion 
                                 }),
                                 CONFIGURACION.tiempoMaximoEnvioSegundos || 90
                             );
+
+                            if (!resEnvio) {
+                                throw new Error('No se pudo resolver el chat del grupo en WhatsApp');
+                            }
 
                             gruposEnviadosEnEsteCiclo.add(grupoEncontrado.id._serialized);
                             guardarEstado(i, gruposEnviadosEnEsteCiclo);

@@ -99,9 +99,51 @@ if (!code.includes('eSerialization')) {
     patched = true;
 }
 
+// 4. Blindaje contra Error: findChat: new chat not found
+if (!code.includes('typeof chatCol.find === \'function\'')) {
+    code = code.replace(
+        /chat =\s*window\.require\('WAWebCollections'\)\.Chat\.get\(chatWid\)[\s\S]*?\)\?\.chat;/,
+        `const chatCol = window.require('WAWebCollections').Chat;
+            chat = chatCol.get(chatWid) || chatCol.get(chatId) || (chatWid?._serialized ? chatCol.get(chatWid._serialized) : null);
+            if (!chat && Array.isArray(chatCol.models)) {
+                chat = chatCol.models.find(m => {
+                    const mId = m?.id?._serialized || String(m?.id || '');
+                    return mId === chatId || (chatWid && mId === chatWid._serialized);
+                });
+            }
+            if (!chat && typeof chatCol.find === 'function' && chatWid) {
+                try {
+                    chat = await chatCol.find(chatWid);
+                } catch (eFind) {}
+            }
+            if (!chat && chatWid) {
+                try {
+                    const cmdModule = window.require ? window.require('WAWebCmd') : null;
+                    const cmd = cmdModule?.Cmd || window.Store?.Cmd;
+                    if (cmd && typeof cmd.openChatBottom === 'function') {
+                        await cmd.openChatBottom({ chat: { id: chatWid } });
+                        chat = chatCol.get(chatWid) || chatCol.get(chatId);
+                    } else if (cmd && typeof cmd.openChatAt === 'function') {
+                        await cmd.openChatAt(chatWid);
+                        chat = chatCol.get(chatWid) || chatCol.get(chatId);
+                    }
+                } catch (eCmd) {}
+            }
+            if (!chat && !String(chatId).endsWith('@g.us')) {
+                try {
+                    const findAction = window.require('WAWebFindChatAction');
+                    if (findAction?.findOrCreateLatestChat) {
+                        chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
+                    }
+                } catch (eFC) {}
+            }`
+    );
+    patched = true;
+}
+
 if (patched) {
     fs.writeFileSync(rutaUtils, code, 'utf8');
-    console.log('✅ Parche multimedia y de serialización aplicado correctamente a whatsapp-web.js.');
+    console.log('✅ Parche multimedia, de serialización y findChat aplicado correctamente a whatsapp-web.js.');
 } else {
-    console.log('✅ whatsapp-web.js ya cuenta con el parche multimedia.');
+    console.log('✅ whatsapp-web.js ya cuenta con todos los parches necesarios.');
 }
