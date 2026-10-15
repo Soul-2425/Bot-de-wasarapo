@@ -100,20 +100,24 @@ if (!code.includes('eSerialization')) {
 }
 
 // 4. Blindaje contra Error: findChat: new chat not found
-if (!code.includes('typeof chatCol.find === \'function\'')) {
+if (!code.includes('chatCol.getModelsArray')) {
     code = code.replace(
-        /chat =\s*window\.require\('WAWebCollections'\)\.Chat\.get\(chatWid\)[\s\S]*?\)\?\.chat;/,
+        /const chatCol = window\.require\('WAWebCollections'\)\.Chat;[\s\S]*?if \(!chat && !String\(chatId\)\.endsWith\('@g\.us'\)\) \{[\s\S]*?\} catch \(eFC\) \{\}\s*\}/,
         `const chatCol = window.require('WAWebCollections').Chat;
             chat = chatCol.get(chatWid) || chatCol.get(chatId) || (chatWid?._serialized ? chatCol.get(chatWid._serialized) : null);
-            if (!chat && Array.isArray(chatCol.models)) {
-                chat = chatCol.models.find(m => {
-                    const mId = m?.id?._serialized || String(m?.id || '');
+            if (!chat) {
+                const models = typeof chatCol.getModelsArray === 'function' 
+                    ? chatCol.getModelsArray() 
+                    : (Array.isArray(chatCol.models) ? chatCol.models : []);
+                chat = models.find(m => {
+                    const mId = m?.id?._serialized || m?.__x_id?._serialized || String(m?.id || '');
                     return mId === chatId || (chatWid && mId === chatWid._serialized);
                 });
             }
             if (!chat && typeof chatCol.find === 'function' && chatWid) {
                 try {
-                    chat = await chatCol.find(chatWid);
+                    const found = await chatCol.find(chatWid);
+                    chat = (found && found.chat) ? found.chat : (found || chatCol.get(chatWid) || chatCol.get(chatId));
                 } catch (eFind) {}
             }
             if (!chat && chatWid) {
@@ -121,7 +125,8 @@ if (!code.includes('typeof chatCol.find === \'function\'')) {
                     const cmdModule = window.require ? window.require('WAWebCmd') : null;
                     const cmd = cmdModule?.Cmd || window.Store?.Cmd;
                     if (cmd && typeof cmd.openChatBottom === 'function') {
-                        await cmd.openChatBottom({ chat: { id: chatWid } });
+                        const cObj = chatCol.get(chatWid) || chatCol.get(chatId) || { id: chatWid };
+                        await cmd.openChatBottom({ chat: cObj });
                         chat = chatCol.get(chatWid) || chatCol.get(chatId);
                     } else if (cmd && typeof cmd.openChatAt === 'function') {
                         await cmd.openChatAt(chatWid);
@@ -137,6 +142,27 @@ if (!code.includes('typeof chatCol.find === \'function\'')) {
                     }
                 } catch (eFC) {}
             }`
+    );
+    patched = true;
+}
+
+// 5. Blindaje contra retorno undefined en sendMessage de WhatsApp Web
+if (!code.includes('createdMsg || message')) {
+    code = code.replace(
+        /const \[msgPromise, sendMsgResultPromise\][\s\S]*?return window\s*\.require\('WAWebCollections'\)\s*\.Msg\.get\(newMsgKey[\s\S]*?\);/,
+        `const [msgPromise, sendMsgResultPromise] = window
+            .require('WAWebSendMsgChatAction')
+            .addAndSendMsgToChat(chat, message);
+        const createdMsg = await msgPromise;
+
+        if (options.waitUntilMsgSent) await sendMsgResultPromise;
+
+        const msgCol = window.require('WAWebCollections')?.Msg;
+        const keySerialized = newMsgKey?._serialized || String(newMsgKey?.id || newMsgKey || '');
+        return (msgCol?.get ? (msgCol.get(newMsgKey) || msgCol.get(keySerialized)) : null)
+            || (chat?.msgs?.get ? (chat.msgs.get(newMsgKey) || chat.msgs.get(keySerialized)) : null)
+            || createdMsg
+            || message;`
     );
     patched = true;
 }

@@ -467,14 +467,20 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
 
                             if (collections?.Chat) {
                                 chat = collections.Chat.get(chatWid) || collections.Chat.get(chatId) || (chatWid?._serialized ? collections.Chat.get(chatWid._serialized) : null);
-                                if (!chat && Array.isArray(collections.Chat.models)) {
-                                    chat = collections.Chat.models.find(m => {
-                                        const mId = m?.id?._serialized || String(m?.id || '');
+                                if (!chat) {
+                                    const models = typeof collections.Chat.getModelsArray === 'function'
+                                        ? collections.Chat.getModelsArray()
+                                        : (Array.isArray(collections.Chat.models) ? collections.Chat.models : []);
+                                    chat = models.find(m => {
+                                        const mId = m?.id?._serialized || m?.__x_id?._serialized || String(m?.id || '');
                                         return mId === chatId || (chatWid && mId === chatWid._serialized);
                                     });
                                 }
                                 if (!chat && typeof collections.Chat.find === 'function' && chatWid) {
-                                    try { chat = await collections.Chat.find(chatWid); } catch (e) {}
+                                    try {
+                                        const found = await collections.Chat.find(chatWid);
+                                        chat = (found && found.chat) ? found.chat : (found || collections.Chat.get(chatWid) || collections.Chat.get(chatId));
+                                    } catch (e) {}
                                 }
                             }
 
@@ -483,7 +489,8 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                                     const cmdModule = window.require ? window.require('WAWebCmd') : null;
                                     const cmd = cmdModule?.Cmd || window.Store?.Cmd;
                                     if (cmd && typeof cmd.openChatBottom === 'function') {
-                                        await cmd.openChatBottom({ chat: { id: chatWid } }).catch(() => {});
+                                        const cObj = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId) || { id: chatWid };
+                                        await cmd.openChatBottom({ chat: cObj }).catch(() => {});
                                         chat = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId);
                                     } else if (cmd && typeof cmd.openChatAt === 'function') {
                                         await cmd.openChatAt(chatWid).catch(() => {});
@@ -1068,17 +1075,13 @@ async function iniciarMotorDeEnvios() {
 
                             // Envío con timeout y verificación de recepción en servidores de WhatsApp
                             const esperarConfirmacion = CONFIGURACION.esperarConfirmacionServidor !== false;
-                            const resEnvio = await enviarConTimeout(
+                            await enviarConTimeout(
                                 cliente.sendMessage(grupoEncontrado.id._serialized, mediaAEnviar, { 
                                     caption: mensajeFinal,
                                     waitUntilMsgSent: esperarConfirmacion 
                                 }),
                                 CONFIGURACION.tiempoMaximoEnvioSegundos || 90
                             );
-
-                            if (!resEnvio) {
-                                throw new Error('No se pudo resolver el chat del grupo en WhatsApp');
-                            }
 
                             gruposEnviadosEnEsteCiclo.add(grupoEncontrado.id._serialized);
                             guardarEstado(i, gruposEnviadosEnEsteCiclo);
