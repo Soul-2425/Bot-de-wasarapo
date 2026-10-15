@@ -142,20 +142,6 @@ if (!code.includes('chatCol.getModelsArray')) {
                     chat = (found && found.chat) ? found.chat : (found || chatCol.get(chatWid) || chatCol.get(chatId));
                 } catch (eFind) {}
             }
-            if (!chat && chatWid) {
-                try {
-                    const cmdModule = window.require ? window.require('WAWebCmd') : null;
-                    const cmd = cmdModule?.Cmd || window.Store?.Cmd;
-                    if (cmd && typeof cmd.openChatBottom === 'function') {
-                        const cObj = chatCol.get(chatWid) || chatCol.get(chatId) || { id: chatWid };
-                        await cmd.openChatBottom({ chat: cObj });
-                        chat = chatCol.get(chatWid) || chatCol.get(chatId);
-                    } else if (cmd && typeof cmd.openChatAt === 'function') {
-                        await cmd.openChatAt(chatWid);
-                        chat = chatCol.get(chatWid) || chatCol.get(chatId);
-                    }
-                } catch (eCmd) {}
-            }
             if (!chat && !String(chatId).endsWith('@g.us')) {
                 try {
                     const findAction = window.require('WAWebFindChatAction');
@@ -163,15 +149,6 @@ if (!code.includes('chatCol.getModelsArray')) {
                         chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
                     }
                 } catch (eFC) {}
-            }
-            if (!chat && chatWid) {
-                try {
-                    const chatClass = chatCol.modelClass || (window.require ? window.require('WAWebChatModel')?.default : null);
-                    if (chatClass) {
-                        chat = new chatClass({ id: chatWid });
-                        if (chatCol.add) chatCol.add(chat);
-                    }
-                } catch (eNew) {}
             }`
     );
     patched = true;
@@ -280,5 +257,46 @@ if (fs.existsSync(rutaClient)) {
         );
         fs.writeFileSync(rutaClient, codeClient, 'utf8');
         console.log('✅ Parche de robustez aplicado a Client.js.');
+    }
+
+    // 7. Parche contra destrucción prematura de Puppeteer por UNPAIRED temporal
+    if (!codeClient.includes('WAState.UNPAIRED,')) {
+        codeClient = codeClient.replace(
+            `const ACCEPTED_STATES = [
+                    WAState.CONNECTED,
+                    WAState.OPENING,
+                    WAState.PAIRING,
+                    WAState.TIMEOUT,
+                ];`,
+            `const ACCEPTED_STATES = [
+                    WAState.CONNECTED,
+                    WAState.OPENING,
+                    WAState.PAIRING,
+                    WAState.TIMEOUT,
+                    WAState.UNPAIRED,
+                    WAState.UNPAIRED_IDLE,
+                ];`
+        );
+        codeClient = codeClient.replace(
+            `if (!ACCEPTED_STATES.includes(state)) {
+                    /**
+                     * Emitted when the client has been disconnected
+                     * @event Client#disconnected
+                     * @param {WAState|"LOGOUT"} reason reason that caused the disconnect
+                     */
+                    await this.authStrategy.disconnect();
+                    this.emit(Events.DISCONNECTED, state);
+                    this.destroy();
+                }`,
+            `if (!ACCEPTED_STATES.includes(state) || state === 'LOGOUT') {
+                    await this.authStrategy.disconnect();
+                    this.emit(Events.DISCONNECTED, state);
+                    if (state === 'LOGOUT') {
+                        this.destroy();
+                    }
+                }`
+        );
+        fs.writeFileSync(rutaClient, codeClient, 'utf8');
+        console.log('✅ Parche de estabilidad de estados aplicado a Client.js.');
     }
 }

@@ -260,7 +260,7 @@ function crearInstanciaCliente() {
             dataPath: path.join(__dirname, '.wwebjs_auth')
         }),
         authTimeoutMs: 180000,
-        qrMaxRetries: 5,
+        qrMaxRetries: 0,
         takeoverOnConflict: true,
         takeoverTimeoutMs: 10000,
         webVersionCache: {
@@ -1001,34 +1001,17 @@ async function iniciarMotorDeEnvios() {
 
                     while (!envioExitoso) {
                         try {
-                            // Abrir y enfocar el chat en WhatsApp Web para montar su modelo en memoria viva
-                            // Abrir y enfocar el chat en WhatsApp Web para montar su modelo en memoria viva
+                            // Asegurar indexación del chat en memoria viva de WhatsApp Web
                             try {
                                 if (cliente?.pupPage && !cliente.pupPage.isClosed()) {
-                                    if (cliente.interface && typeof cliente.interface.openChatWindow === 'function') {
-                                        await cliente.interface.openChatWindow(grupoEncontrado.id._serialized).catch(() => {});
-                                    }
                                     await cliente.pupPage.evaluate(async (targetId) => {
                                         if (!window.require) return;
                                         try {
                                             const widFactory = window.require('WAWebWidFactory');
                                             const wid = widFactory ? widFactory.createWid(targetId) : null;
-                                            if (!wid) return;
-
                                             const collections = window.require('WAWebCollections');
-                                            if (collections?.Chat?.find) {
+                                            if (wid && collections?.Chat?.find) {
                                                 await collections.Chat.find(wid).catch(() => {});
-                                            }
-
-                                            const cmdModule = window.require('WAWebCmd');
-                                            const cmd = cmdModule?.Cmd || window.Store?.Cmd;
-                                            if (cmd) {
-                                                if (typeof cmd.openChatBottom === 'function') {
-                                                    const chatObj = collections?.Chat?.get(wid) || { id: wid };
-                                                    await cmd.openChatBottom({ chat: chatObj }).catch(() => {});
-                                                } else if (typeof cmd.openChatAt === 'function') {
-                                                    await cmd.openChatAt(wid).catch(() => {});
-                                                }
                                             }
                                         } catch (eInnerMount) {}
                                     }, grupoEncontrado.id._serialized).catch(() => {});
