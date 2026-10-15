@@ -121,35 +121,180 @@ if (!code.includes('eSerialization')) {
     patched = true;
 }
 
-// 4. Blindaje contra Error: findChat: new chat not found
-if (!code.includes('chatCol.getModelsArray')) {
+// 4. Blindaje contra Error: findChat: new chat not found y soporte nativo Chat.find / IndexedDB cursor
+if (!code.includes('TIMEOUT_FIND')) {
     code = code.replace(
-        /const chatCol = window\.require\('WAWebCollections'\)\.Chat;[\s\S]*?if \(!chat && !String\(chatId\)\.endsWith\('@g\.us'\)\) \{[\s\S]*?\} catch \(eFC\) \{\}\s*\}/,
-        `const chatCol = window.require('WAWebCollections').Chat;
-            chat = chatCol.get(chatWid) || chatCol.get(chatId) || (chatWid?._serialized ? chatCol.get(chatWid._serialized) : null);
-            if (!chat) {
-                const models = typeof chatCol.getModelsArray === 'function' 
-                    ? chatCol.getModelsArray() 
-                    : (Array.isArray(chatCol.models) ? chatCol.models : []);
-                chat = models.find(m => {
-                    const mId = m?.id?._serialized || m?.__x_id?._serialized || String(m?.id || '');
-                    return mId === chatId || (chatWid && mId === chatWid._serialized);
-                });
+        /window\.WWebJS\.getChat = async \(chatId, \{ getAsModel = true \} = \{\}\) => \{[\s\S]*?return getAsModel && chat[\s\S]*?: chat;\s*\};/,
+        `window.WWebJS.getChat = async (chatId, { getAsModel = true } = {}) => {
+        const isChannel = /@\\w*newsletter\\b/.test(chatId);
+        const widFactory = window.require ? window.require('WAWebWidFactory') : null;
+        let chatWid = null;
+        if (widFactory) {
+            try {
+                chatWid = widFactory.createWid(chatId);
+            } catch (eWid) {}
+        }
+        let chat;
+
+        if (isChannel) {
+            try {
+                chat = window
+                    .require('WAWebCollections')
+                    .WAWebNewsletterCollection.get(chatId);
+                if (!chat) {
+                    await window
+                        .require('WAWebLoadNewsletterPreviewChatAction')
+                        .loadNewsletterPreviewChat(chatId);
+                    chat = await window
+                        .require('WAWebCollections')
+                        .WAWebNewsletterCollection.find(chatWid || chatId);
+                }
+            } catch (ignoredError) {
+                chat = null;
             }
-            if (!chat && typeof chatCol.find === 'function' && chatWid) {
-                try {
-                    const found = await chatCol.find(chatWid);
-                    chat = (found && found.chat) ? found.chat : (found || chatCol.get(chatWid) || chatCol.get(chatId));
-                } catch (eFind) {}
+        } else {
+            const chatCol = (window.require ? window.require('WAWebCollections')?.Chat : null) || window.Store?.Chat;
+            if (chatCol) {
+                // 1. Búsqueda directa síncrona en memoria RAM
+                chat = (chatWid && chatCol.get ? chatCol.get(chatWid) : null)
+                    || (chatCol.get ? chatCol.get(chatId) : null)
+                    || (chatWid?._serialized && chatCol.get ? chatCol.get(chatWid._serialized) : null);
+
+                // 2. Búsqueda en array de modelos en memoria
+                if (!chat) {
+                    const models = typeof chatCol.getModelsArray === 'function' 
+                        ? chatCol.getModelsArray() 
+                        : (Array.isArray(chatCol.models) ? chatCol.models : []);
+                    chat = models.find(m => {
+                        if (!m || !m.id) return false;
+                        const mId = m.id._serialized || m.__x_id?._serialized || String(m.id);
+                        if (mId === chatId || (chatWid && mId === chatWid._serialized)) return true;
+                        if (m.id.user && chatId.includes(m.id.user)) return true;
+                        return false;
+                    });
+                }
+
+                // 3. Método nativo oficial de WhatsApp Web: Chat.find(chatWid)
+                if (!chat && chatWid && typeof chatCol.find === 'function') {
+                    try {
+                        const res = await Promise.race([
+                            chatCol.find(chatWid),
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_FIND')), 4000))
+                        ]);
+                        chat = (res && res.chat) ? res.chat : res;
+                    } catch (eFind) {}
+                }
+
+                if (!chat && typeof chatCol.find === 'function') {
+                    try {
+                        const res = await Promise.race([
+                            chatCol.find(chatId),
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_FIND')), 4000))
+                        ]);
+                        chat = (res && res.chat) ? res.chat : res;
+                    } catch (eFindStr) {}
+                }
+
+                // 4. Extracción desde IndexedDB (model-storage) con soporte robusto por cursor
+                if (!chat) {
+                    try {
+                        const idbChat = await new Promise((resolve) => {
+                            const timer = setTimeout(() => resolve(null), 3500);
+                            try {
+                                const req = indexedDB.open('model-storage');
+                                req.onerror = () => { clearTimeout(timer); resolve(null); };
+                                req.onsuccess = (evt) => {
+                                    try {
+                                        const db = evt.target.result;
+                                        if (!db.objectStoreNames.contains('chat')) {
+                                            clearTimeout(timer); db.close(); resolve(null); return;
+                                        }
+                                        const tx = db.transaction('chat', 'readonly');
+                                        const store = tx.objectStore('chat');
+                                        let handled = false;
+
+                                        // Intento 1: store.get directo
+                                        const getReq = store.get(chatId) || (chatWid ? store.get(chatWid._serialized) : null);
+                                        if (getReq) {
+                                            getReq.onsuccess = (e) => {
+                                                if (e.target.result && !handled) {
+                                                    handled = true;
+                                                    clearTimeout(timer);
+                                                    db.close();
+                                                    resolve(e.target.result);
+                                                }
+                                            };
+                                        }
+
+                                        // Intento 2: iteración exhaustiva por cursor
+                                        const curReq = store.openCursor();
+                                        curReq.onsuccess = (e) => {
+                                            if (handled) return;
+                                            const cursor = e.target.result;
+                                            if (cursor) {
+                                                const v = cursor.value;
+                                                const vId = typeof v.id === 'string' ? v.id : (v.id && v.id._serialized ? v.id._serialized : '');
+                                                if (vId === chatId || (chatWid && vId === chatWid._serialized)) {
+                                                    handled = true;
+                                                    clearTimeout(timer);
+                                                    db.close();
+                                                    resolve(v);
+                                                    return;
+                                                }
+                                                cursor.continue();
+                                            } else {
+                                                if (!handled) {
+                                                    clearTimeout(timer);
+                                                    db.close();
+                                                    resolve(null);
+                                                }
+                                            }
+                                        };
+                                        curReq.onerror = () => { if (!handled) { clearTimeout(timer); db.close(); resolve(null); } };
+                                    } catch (eInner) { clearTimeout(timer); resolve(null); }
+                                };
+                            } catch (eOpen) { clearTimeout(timer); resolve(null); }
+                        });
+
+                        if (idbChat && typeof chatCol.add === 'function') {
+                            try {
+                                if (widFactory && (!idbChat.id || typeof idbChat.id !== 'object' || !idbChat.id.toJid)) {
+                                    idbChat.id = chatWid || widFactory.createWid(chatId);
+                                }
+                                chat = chatCol.add(idbChat, { merge: true });
+                                if (Array.isArray(chat)) chat = chat[0];
+                            } catch (eAdd) {}
+                        }
+                    } catch (eIDB) {}
+                }
+
+                // 5. Para chats individuales (no grupos), consultar findOrCreateLatestChat
+                if (!chat && !String(chatId).endsWith('@g.us')) {
+                    try {
+                        const findAction = window.require ? window.require('WAWebFindChatAction') : null;
+                        if (findAction?.findOrCreateLatestChat && chatWid) {
+                            const res = await findAction.findOrCreateLatestChat(chatWid);
+                            chat = (res && res.chat) ? res.chat : res;
+                        }
+                    } catch (eFC) {}
+                }
+
+                // 6. Reintento final de lectura directa en colección
+                if (!chat && chatWid && chatCol.get) {
+                    chat = chatCol.get(chatWid) || chatCol.get(chatId);
+                }
             }
-            if (!chat && !String(chatId).endsWith('@g.us')) {
-                try {
-                    const findAction = window.require('WAWebFindChatAction');
-                    if (findAction?.findOrCreateLatestChat) {
-                        chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
-                    }
-                } catch (eFC) {}
-            }`
+        }
+
+        if (getAsModel && chat) {
+            try {
+                return await window.WWebJS.getChatModel(chat, { isChannel: isChannel });
+            } catch (eModel) {
+                return chat;
+            }
+        }
+        return chat;
+    };`
     );
     patched = true;
 }
@@ -186,7 +331,7 @@ if (patched) {
 const rutaClient = path.join(__dirname, 'node_modules', 'whatsapp-web.js', 'src', 'Client.js');
 if (fs.existsSync(rutaClient)) {
     let codeClient = fs.readFileSync(rutaClient, 'utf8');
-    if (!codeClient.includes('__debugError')) {
+    if (!codeClient.includes('TIMEOUT_FIND')) {
         codeClient = codeClient.replace(
             /const sentMsg = await this\.pupPage\.evaluate\([\s\S]*?return sentMsg \? new Message\(this, sentMsg\) : undefined;/,
             `const sentMsg = await this.pupPage.evaluate(
@@ -197,18 +342,96 @@ if (fs.existsSync(rutaClient)) {
                     });
 
                     if (!chat) {
-                        const chatCol = (window.require ? window.require('WAWebCollections')?.Chat : null) || window.Store?.Chat;
-                        const wid = (window.require ? window.require('WAWebWidFactory')?.createWid(chatId) : null);
-                        if (chatCol) {
-                            chat = (wid && chatCol.get ? chatCol.get(wid) : null) || (chatCol.get ? chatCol.get(chatId) : null);
-                            if (!chat) {
-                                const models = typeof chatCol.getModelsArray === 'function' ? chatCol.getModelsArray() : (Array.isArray(chatCol.models) ? chatCol.models : []);
-                                chat = models.find(m => {
-                                    const mId = m?.id?._serialized || String(m?.id || '');
-                                    return mId === chatId || (wid && mId === wid._serialized);
-                                });
+                        try {
+                            const chatCol = (window.require ? window.require('WAWebCollections')?.Chat : null) || window.Store?.Chat;
+                            const widFactory = window.require ? window.require('WAWebWidFactory') : null;
+                            const wid = widFactory ? widFactory.createWid(chatId) : null;
+                            if (chatCol) {
+                                // 1. Método nativo Chat.find
+                                if (wid && typeof chatCol.find === 'function') {
+                                    try {
+                                        const res = await Promise.race([
+                                            chatCol.find(wid),
+                                            new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_FIND')), 4000))
+                                        ]);
+                                        chat = (res && res.chat) ? res.chat : res;
+                                    } catch (eFind) {}
+                                }
+
+                                if (!chat && typeof chatCol.find === 'function') {
+                                    try {
+                                        const res = await Promise.race([
+                                            chatCol.find(chatId),
+                                            new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_FIND')), 4000))
+                                        ]);
+                                        chat = (res && res.chat) ? res.chat : res;
+                                    } catch (eFindStr) {}
+                                }
+
+                                // 2. Búsqueda por cursor en IndexedDB model-storage
+                                if (!chat) {
+                                    try {
+                                        const idbChat = await new Promise((resolve) => {
+                                            const timer = setTimeout(() => resolve(null), 3500);
+                                            try {
+                                                const req = indexedDB.open('model-storage');
+                                                req.onerror = () => { clearTimeout(timer); resolve(null); };
+                                                req.onsuccess = (evt) => {
+                                                    try {
+                                                        const db = evt.target.result;
+                                                        if (!db.objectStoreNames.contains('chat')) {
+                                                            clearTimeout(timer); db.close(); resolve(null); return;
+                                                        }
+                                                        const tx = db.transaction('chat', 'readonly');
+                                                        const store = tx.objectStore('chat');
+                                                        let handled = false;
+
+                                                        const curReq = store.openCursor();
+                                                        curReq.onsuccess = (e) => {
+                                                            if (handled) return;
+                                                            const cursor = e.target.result;
+                                                            if (cursor) {
+                                                                const v = cursor.value;
+                                                                const vId = typeof v.id === 'string' ? v.id : (v.id && v.id._serialized ? v.id._serialized : '');
+                                                                if (vId === chatId || (wid && vId === wid._serialized)) {
+                                                                    handled = true;
+                                                                    clearTimeout(timer);
+                                                                    db.close();
+                                                                    resolve(v);
+                                                                    return;
+                                                                }
+                                                                cursor.continue();
+                                                            } else {
+                                                                if (!handled) {
+                                                                    clearTimeout(timer);
+                                                                    db.close();
+                                                                    resolve(null);
+                                                                }
+                                                            }
+                                                        };
+                                                        curReq.onerror = () => { if (!handled) { clearTimeout(timer); db.close(); resolve(null); } };
+                                                    } catch (eInner) { clearTimeout(timer); resolve(null); }
+                                                };
+                                            } catch (eOpen) { clearTimeout(timer); resolve(null); }
+                                        });
+
+                                        if (idbChat && typeof chatCol.add === 'function') {
+                                            try {
+                                                if (widFactory && (!idbChat.id || typeof idbChat.id !== 'object' || !idbChat.id.toJid)) {
+                                                    idbChat.id = wid || widFactory.createWid(chatId);
+                                                }
+                                                chat = chatCol.add(idbChat, { merge: true });
+                                                if (Array.isArray(chat)) chat = chat[0];
+                                            } catch (eAdd) {}
+                                        }
+                                    } catch (eIDB) {}
+                                }
+
+                                if (!chat && wid) {
+                                    chat = chatCol.get(wid) || chatCol.get(chatId);
+                                }
                             }
-                        }
+                        } catch (eHydrate) {}
                     }
 
                     if (!chat) {

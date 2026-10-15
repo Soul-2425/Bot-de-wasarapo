@@ -173,10 +173,11 @@ function esperar(ms) {
     return new Promise(res => setTimeout(res, ms));
 }
 
-async function esperarEstabilizacionWhatsApp(cli, maxSegundos = 40) {
-    logger.item('Estabilización', 'Sincronizando chats en memoria viva...');
+async function esperarEstabilizacionWhatsApp(cli, maxSegundos = 45) {
+    logger.item('Estabilización', 'Sincronizando chats y grupos en memoria viva...');
     const inicio = Date.now();
-    let chatsDetectados = 0;
+    let ultimoCount = -1;
+    let cuentasEstables = 0;
 
     while ((Date.now() - inicio) < maxSegundos * 1000) {
         try {
@@ -190,22 +191,29 @@ async function esperarEstabilizacionWhatsApp(cli, maxSegundos = 40) {
                             ? chatCol.getModelsArray().length
                             : (Array.isArray(chatCol.models) ? chatCol.models.length : 0);
                     }
-                    return { count };
+                    const loadingScreen = document.querySelector('progress') || document.querySelector('[data-animate-loading-screen="true"]');
+                    return { count, syncing: !!loadingScreen };
                 });
 
-                if (info && info.count > 0) {
-                    chatsDetectados = info.count;
-                    break;
+                if (info && !info.syncing && info.count > 0) {
+                    if (info.count === ultimoCount) {
+                        cuentasEstables++;
+                        // Si la cantidad de chats en memoria se mantiene estable durante 3 chequeos (6 segundos), ya sincronizó
+                        if (cuentasEstables >= 3) {
+                            break;
+                        }
+                    } else {
+                        cuentasEstables = 0;
+                        ultimoCount = info.count;
+                    }
                 }
             }
         } catch (e) {}
         await esperar(2000);
     }
 
-    // Esperar 4s adicionales para que el store asiente los modelos
-    await esperar(4000);
-    logger.item('Estabilización', '✅ Completada', `${chatsDetectados > 0 ? chatsDetectados + ' chats en memoria' : 'Sesión lista'}`);
-    return chatsDetectados > 0;
+    logger.item('Estabilización', '✅ Completada', `${ultimoCount > 0 ? ultimoCount + ' chats en memoria' : 'Sesión lista'}`);
+    return ultimoCount > 0;
 }
 
 function preguntarAlUsuario(pregunta) {
@@ -440,7 +448,7 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
             logger.item('Estado de sesión', '✅ Conectada y lista', 'Handshake completado');
             logger.faseFooter();
 
-            // Blindaje de serialización multimedia y resolución de chats
+            // Blindaje de serialización multimedia
             try {
                 await nuevoCliente.pupPage.evaluate(() => {
                     if (window.WWebJS) {
@@ -455,69 +463,6 @@ async function iniciarNuevoCliente(maxIntentos = 3) {
                                     type: message?.type || 'chat'
                                 };
                             }
-                        };
-
-                        const origGetChat = window.WWebJS.getChat;
-                        window.WWebJS.getChat = async function(chatId, options = {}) {
-                            const isChannel = /@\w*newsletter\b/.test(chatId);
-                            const widFactory = window.require ? window.require('WAWebWidFactory') : null;
-                            const collections = window.require ? window.require('WAWebCollections') : null;
-                            const chatWid = widFactory ? widFactory.createWid(chatId) : null;
-                            let chat = null;
-
-                            if (collections?.Chat) {
-                                chat = collections.Chat.get(chatWid) || collections.Chat.get(chatId) || (chatWid?._serialized ? collections.Chat.get(chatWid._serialized) : null);
-                                if (!chat) {
-                                    const models = typeof collections.Chat.getModelsArray === 'function'
-                                        ? collections.Chat.getModelsArray()
-                                        : (Array.isArray(collections.Chat.models) ? collections.Chat.models : []);
-                                    chat = models.find(m => {
-                                        const mId = m?.id?._serialized || m?.__x_id?._serialized || String(m?.id || '');
-                                        return mId === chatId || (chatWid && mId === chatWid._serialized);
-                                    });
-                                }
-                                if (!chat && typeof collections.Chat.find === 'function' && chatWid) {
-                                    try {
-                                        const found = await collections.Chat.find(chatWid);
-                                        chat = (found && found.chat) ? found.chat : (found || collections.Chat.get(chatWid) || collections.Chat.get(chatId));
-                                    } catch (e) {}
-                                }
-                            }
-
-                            if (!chat && chatWid) {
-                                try {
-                                    const cmdModule = window.require ? window.require('WAWebCmd') : null;
-                                    const cmd = cmdModule?.Cmd || window.Store?.Cmd;
-                                    if (cmd && typeof cmd.openChatBottom === 'function') {
-                                        const cObj = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId) || { id: chatWid };
-                                        await cmd.openChatBottom({ chat: cObj }).catch(() => {});
-                                        chat = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId);
-                                    } else if (cmd && typeof cmd.openChatAt === 'function') {
-                                        await cmd.openChatAt(chatWid).catch(() => {});
-                                        chat = collections?.Chat?.get(chatWid) || collections?.Chat?.get(chatId);
-                                    }
-                                } catch (eCmd) {}
-                            }
-
-                            if (!chat && !String(chatId).endsWith('@g.us')) {
-                                try {
-                                    const findAction = window.require ? window.require('WAWebFindChatAction') : null;
-                                    if (findAction?.findOrCreateLatestChat && chatWid) {
-                                        chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
-                                    }
-                                } catch (eFC) {}
-                            }
-
-                            if (!chat && origGetChat) {
-                                try {
-                                    chat = await origGetChat(chatId, options);
-                                    if (chat) return chat;
-                                } catch (eOrig) {}
-                            }
-
-                            return (options.getAsModel !== false && chat && typeof window.WWebJS.getChatModel === 'function')
-                                ? await window.WWebJS.getChatModel(chat, { isChannel })
-                                : chat;
                         };
                     }
                 });
@@ -600,106 +545,98 @@ async function obtenerChatsSeguro(clienteBase, intentos = 3) {
             return { id: { _serialized: id }, name: nombre, isGroup: true, isReadOnly: false };
         });
     }
+
     try {
-        logger.info(`Sincronizando grupos en memoria viva de WhatsApp...`);
-        const gruposMemoria = await clienteBase.pupPage.evaluate(() => {
-            try {
-                let chatsRaw = [];
-                if (window.require) {
-                    try {
-                        const collections = window.require('WAWebCollections');
-                        if (collections && collections.Chat) {
-                            chatsRaw = typeof collections.Chat.getModelsArray === 'function' 
-                                ? collections.Chat.getModelsArray() 
-                                : (collections.Chat.models || []);
-                        }
-                    } catch (eReq) {}
+        logger.info(`Sincronizando e hidratando grupos en memoria viva de WhatsApp...`);
+        const resultadoSincronizacion = await clienteBase.pupPage.evaluate(async () => {
+            const mapaGrupos = new Map();
+            const collections = window.require ? window.require('WAWebCollections') : null;
+            const chatCol = collections?.Chat || window.Store?.Chat;
+            const GroupCol = collections?.GroupMetadata || collections?.WAWebGroupMetadataCollection || window.Store?.GroupMetadata;
+            const ContactCol = collections?.Contact || window.Store?.Contact;
+
+            const sanitizarTexto = (v) => {
+                if (!v) return '';
+                if (typeof v === 'string') return v.trim();
+                if (typeof v === 'object' && v !== null) {
+                    const val = v.formattedTitle || v.name || v.title || v.subject || v.displayName;
+                    if (typeof val === 'string') return val.trim();
                 }
-                if (!chatsRaw || chatsRaw.length === 0) {
-                    if (window.Store && window.Store.Chat) {
-                        if (typeof window.Store.Chat.getModelsArray === 'function') {
-                            chatsRaw = window.Store.Chat.getModelsArray();
-                        } else if (Array.isArray(window.Store.Chat.models)) {
-                            chatsRaw = window.Store.Chat.models;
-                        }
+                return '';
+            };
+
+            // 1. Extraer grupos actualmente en memoria viva (ChatCollection)
+            let chatsRaw = [];
+            if (chatCol) {
+                chatsRaw = typeof chatCol.getModelsArray === 'function'
+                    ? chatCol.getModelsArray()
+                    : (Array.isArray(chatCol.models) ? chatCol.models : []);
+            }
+
+            for (const c of chatsRaw) {
+                if (!c) continue;
+                const idStr = c.id && c.id._serialized ? c.id._serialized : String(c.id || '');
+                if (c.isGroup || idStr.includes('@g.us')) {
+                    let nom = sanitizarTexto(c.name) || sanitizarTexto(c.formattedTitle) || sanitizarTexto(c.title) || sanitizarTexto(c.displayName) || '';
+                    if (!nom && c.groupMetadata && c.groupMetadata.subject) {
+                        nom = sanitizarTexto(c.groupMetadata.subject);
                     }
+                    if (!nom && GroupCol) {
+                        try {
+                            const gm = GroupCol.get(c.id);
+                            if (gm && gm.subject) nom = sanitizarTexto(gm.subject);
+                        } catch (eGm) {}
+                    }
+                    if (!nom && ContactCol) {
+                        try {
+                            const ct = ContactCol.get(c.id);
+                            if (ct) nom = sanitizarTexto(ct.name) || sanitizarTexto(ct.formattedName);
+                        } catch (eCt) {}
+                    }
+                    mapaGrupos.set(idStr, {
+                        id: { _serialized: idStr },
+                        name: nom || '',
+                        isGroup: true,
+                        isReadOnly: Boolean(c.isReadOnly)
+                    });
                 }
-                if (chatsRaw && chatsRaw.length > 0) {
-                    const collections = window.require ? window.require('WAWebCollections') : null;
-                    const GroupCol = collections?.GroupMetadata || collections?.WAWebGroupMetadataCollection || window.Store?.GroupMetadata;
-                    const sanitizarTexto = (v) => {
-                        if (!v) return '';
-                        if (typeof v === 'string') return v.trim();
-                        if (typeof v === 'object' && v !== null) {
-                            const val = v.formattedTitle || v.name || v.title || v.subject || v.displayName;
-                            if (typeof val === 'string') return val.trim();
-                        }
-                        return '';
-                    };
+            }
 
-                    return chatsRaw
-                        .filter(c => c && (c.isGroup || (c.id && (c.id._serialized || String(c.id)).includes('@g.us'))))
-                        .map(c => {
-                            const idStr = c.id && c.id._serialized ? c.id._serialized : String(c.id);
-                            let nom = sanitizarTexto(c.name) || sanitizarTexto(c.formattedTitle) || sanitizarTexto(c.title) || sanitizarTexto(c.displayName) || '';
-                            if (!nom && c.groupMetadata && c.groupMetadata.subject) {
-                                nom = sanitizarTexto(c.groupMetadata.subject);
-                            }
-                            if (!nom && GroupCol) {
-                                try {
-                                    const gm = GroupCol.get(c.id);
-                                    if (gm && gm.subject) nom = sanitizarTexto(gm.subject);
-                                } catch (eGm) {}
-                            }
-                            if (!nom && ContactCol) {
-                                try {
-                                    const ct = ContactCol.get(c.id);
-                                    if (ct) nom = sanitizarTexto(ct.name) || sanitizarTexto(ct.formattedName);
-                                } catch (eCt) {}
-                            }
-                            return {
-                                id: { _serialized: idStr },
-                                name: typeof nom === 'string' ? nom : '',
-                                isGroup: true,
-                                isReadOnly: Boolean(c.isReadOnly)
-                            };
-                        });
-                }
-            } catch (e) {}
-            return null;
-        });
-
-        if (gruposMemoria && gruposMemoria.length > 0) {
-            return gruposMemoria;
-        }
-    } catch (e) {}
-
-    // Intentar una lectura de IndexedDB si la memoria viva aún no ha hidratado
-    try {
-        const grupos = await Promise.race([
-            clienteBase.pupPage.evaluate(async () => {
-                return new Promise((resolve) => {
-                    const timer = setTimeout(() => resolve(null), 3500);
+            // 2. Extraer de IndexedDB (model-storage) e HIDRATAR automáticamente en ChatCollection
+            try {
+                await new Promise((resolve) => {
+                    const timer = setTimeout(() => resolve(), 4000);
                     try {
                         const req = indexedDB.open('model-storage');
-                        req.onerror = () => { clearTimeout(timer); resolve(null); };
+                        req.onerror = () => { clearTimeout(timer); resolve(); };
                         req.onsuccess = (evt) => {
                             const db = evt.target.result;
-                            try {
-                                if (!db.objectStoreNames.contains('chat')) {
-                                    clearTimeout(timer); db.close(); resolve(null);
-                                    return;
-                                }
-                                const tx = db.transaction('chat', 'readonly');
-                                const store = tx.objectStore('chat');
-                                const soloGrupos = [];
-                                const cursorReq = store.openCursor();
-                                cursorReq.onsuccess = (e) => {
-                                    const cursor = e.target.result;
-                                    if (cursor) {
-                                        const c = cursor.value;
-                                        const id = typeof c.id === 'string' ? c.id : (c.id && c.id._serialized ? c.id._serialized : '');
-                                        if (id.includes('@g.us')) {
+                            if (!db.objectStoreNames.contains('chat')) {
+                                clearTimeout(timer); db.close(); resolve(); return;
+                            }
+                            const tx = db.transaction('chat', 'readonly');
+                            const store = tx.objectStore('chat');
+                            const cursorReq = store.openCursor();
+                            cursorReq.onsuccess = (e) => {
+                                const cursor = e.target.result;
+                                if (cursor) {
+                                    const c = cursor.value;
+                                    const id = typeof c.id === 'string' ? c.id : (c.id && c.id._serialized ? c.id._serialized : '');
+                                    if (id && id.includes('@g.us')) {
+                                        // Hidratar en memoria viva de ChatCollection si no está
+                                        if (chatCol && typeof chatCol.add === 'function') {
+                                            try {
+                                                const widFactory = window.require ? window.require('WAWebWidFactory') : null;
+                                                if (widFactory && (!c.id || typeof c.id !== 'object' || !c.id.toJid)) {
+                                                    c.id = widFactory.createWid(id);
+                                                }
+                                                if (!chatCol.get(id)) {
+                                                    chatCol.add(c, { merge: true });
+                                                }
+                                            } catch (eAdd) {}
+                                        }
+
+                                        if (!mapaGrupos.has(id)) {
                                             let nom = '';
                                             if (typeof c.name === 'string') nom = c.name;
                                             else if (typeof c.formattedTitle === 'string') nom = c.formattedTitle;
@@ -707,36 +644,64 @@ async function obtenerChatsSeguro(clienteBase, intentos = 3) {
                                             else if (c.name && typeof c.name === 'object') {
                                                 nom = c.name.formattedTitle || c.name.name || '';
                                             }
-                                            if (typeof nom !== 'string') nom = '';
-                                            soloGrupos.push({
+                                            mapaGrupos.set(id, {
                                                 id: { _serialized: id },
-                                                name: nom.trim(),
+                                                name: sanitizarTexto(nom),
                                                 isGroup: true,
                                                 isReadOnly: Boolean(c.isReadOnly)
                                             });
                                         }
-                                        cursor.continue();
-                                    } else {
-                                        clearTimeout(timer); db.close(); resolve(soloGrupos);
                                     }
-                                };
-                                cursorReq.onerror = () => { clearTimeout(timer); db.close(); resolve(null); };
-                            } catch (txErr) {
-                                clearTimeout(timer); db.close(); resolve(null);
-                            }
+                                    cursor.continue();
+                                } else {
+                                    clearTimeout(timer); db.close(); resolve();
+                                }
+                            };
+                            cursorReq.onerror = () => { clearTimeout(timer); db.close(); resolve(); };
                         };
-                    } catch (openErr) {
-                        clearTimeout(timer); resolve(null);
-                    }
+                    } catch (eIDB) { clearTimeout(timer); resolve(); }
                 });
-            }),
-            new Promise((resolve) => setTimeout(() => resolve(null), 4000))
-        ]);
+            } catch (eIDBOuter) {}
 
-        if (grupos && grupos.length > 0) {
-            return grupos;
+            return Array.from(mapaGrupos.values());
+        });
+
+        // 3. Fusionar con gruposDestino para garantizar que no falte ningún grupo configurado
+        const mapaFinal = new Map();
+        if (Array.isArray(resultadoSincronizacion)) {
+            resultadoSincronizacion.forEach(g => {
+                if (g && g.id && g.id._serialized) {
+                    mapaFinal.set(g.id._serialized, g);
+                }
+            });
         }
-    } catch (error) {}
+
+        gruposDestino.forEach(linea => {
+            let id = linea, nombre = linea;
+            if (linea.includes('|||')) {
+                const p = linea.split('|||');
+                id = p[0];
+                nombre = p[1];
+            }
+            if (!mapaFinal.has(id)) {
+                mapaFinal.set(id, {
+                    id: { _serialized: id },
+                    name: nombre || '',
+                    isGroup: true,
+                    isReadOnly: false
+                });
+            } else {
+                const actual = mapaFinal.get(id);
+                if (!actual.name || actual.name === '(sin nombre)' || actual.name.startsWith('[Sin asunto')) {
+                    actual.name = nombre || actual.name;
+                }
+            }
+        });
+
+        return Array.from(mapaFinal.values());
+    } catch (e) {
+        logger.warn(`Error sincronizando grupos en memoria: ${e.message}`);
+    }
 
     return gruposDestino.map(linea => {
         let id = linea, nombre = linea;
@@ -1001,7 +966,7 @@ async function iniciarMotorDeEnvios() {
 
                     while (!envioExitoso) {
                         try {
-                            // Asegurar indexación del chat en memoria viva de WhatsApp Web
+                            // Asegurar indexación e hidratación del chat en memoria viva de WhatsApp Web
                             try {
                                 if (cliente?.pupPage && !cliente.pupPage.isClosed()) {
                                     await cliente.pupPage.evaluate(async (targetId) => {
@@ -1009,9 +974,20 @@ async function iniciarMotorDeEnvios() {
                                         try {
                                             const widFactory = window.require('WAWebWidFactory');
                                             const wid = widFactory ? widFactory.createWid(targetId) : null;
+                                            if (!wid) return;
                                             const collections = window.require('WAWebCollections');
-                                            if (wid && collections?.Chat?.find) {
-                                                await collections.Chat.find(wid).catch(() => {});
+                                            if (collections?.Chat) {
+                                                const chatCol = collections.Chat;
+                                                let c = chatCol.get(wid) || chatCol.get(targetId);
+                                                if (!c && typeof chatCol.find === 'function') {
+                                                    await chatCol.find(wid).catch(() => {});
+                                                }
+                                            }
+                                            if (!String(targetId).endsWith('@g.us')) {
+                                                const findAction = window.require('WAWebFindChatAction');
+                                                if (findAction?.findOrCreateLatestChat) {
+                                                    await findAction.findOrCreateLatestChat(wid).catch(() => {});
+                                                }
                                             }
                                         } catch (eInnerMount) {}
                                     }, grupoEncontrado.id._serialized).catch(() => {});

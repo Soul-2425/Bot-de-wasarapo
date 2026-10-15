@@ -226,3 +226,25 @@ Esta técnica se denomina en ciberseguridad e ingeniería de software **Polimorf
 En cada grupo emitido, la tarjeta de la terminal ahora muestra en color cian la firma criptográfica generada para ese envío en particular:
 `• Anti-Detección: 🔒 Hash SHA-256: 4a9f8b1c...e102d4 (Único)`
 Al observar la consola grupo tras grupo, verás que **cada grupo muestra un hash completamente diferente**, certificando que ningún grupo recibe el mismo archivo binario.
+
+---
+
+## 11. Error CHAT_NOT_FOUND en Grupos (Resolución con `Chat.find` Nativo y Cursor de IndexedDB)
+
+### 🔴 Síntoma
+El bot inicia con normalidad y reconoce los grupos, pero al intentar emitir en grupos inactivos o de prueba se produce el error:
+`CHAT_NOT_FOUND: No se encontró el chat 120363428562215706@g.us en memoria viva`
+
+### 🔬 Causa Raíz
+1. **Lazy Loading de WhatsApp Web:** WhatsApp Web solo mantiene en memoria RAM (`WAWebCollections.Chat.models`) los chats abiertos recientemente en el visor. Los grupos inactivos o sin mensajes recientes residen únicamente en la base de datos local IndexedDB (`model-storage` -> store `chat`).
+2. **Incompatibilidad de `findOrCreateLatestChat` con Grupos:** `findOrCreateLatestChat` es un método interno de WhatsApp Web diseñado exclusivamente para chats individuales (`@c.us`), por lo que arroja errores no controlados si se invoca sobre IDs de grupos (`@g.us`).
+3. **Ausencia de `Chat.find(chatWid)` en `getChat`:** Ni la implementación previa de `whatsapp-web.js` ni el inyector llamaban al método nativo oficial `WAWebCollections.Chat.find(chatWid)`, el cual es el método asíncrono diseñado por WhatsApp Web para cargar cualquier chat desde IndexedDB hacia la memoria viva.
+4. **Fallas en `store.get(chatId)` en IndexedDB:** La clave primaria en la tabla `chat` de `model-storage` no siempre coincide con la cadena directa del `chatId`, haciendo que `store.get(chatId)` retorne `undefined` a menos que se use un cursor (`openCursor`).
+
+### 🟢 Solución Definitiva Implementada
+1. **Invocación Nativa de `Chat.find(chatWid)`:** Se actualizó `window.WWebJS.getChat` en `Utils.js` y `Client.js` para invocar de forma prioritaria `await chatCol.find(chatWid)` protegido con timeout.
+2. **Extracción Exhaustiva por Cursor en IndexedDB:** Si `Chat.find` no responde, se lee `model-storage` mediante `store.openCursor()`, comparando tanto `id` como `id._serialized`.
+3. **Restauración de Instancia `Wid`:** Se asegura que el objeto extraído tenga su propiedad `id` convertida en una instancia legítima de `Wid` (`widFactory.createWid(id)`) antes de agregarlo con `chatCol.add(c, { merge: true })`.
+4. **Protección en `bot.js`:** En la fase previa al envío y en `obtenerChatsSeguro`, se excluyeron llamadas a `findOrCreateLatestChat` para IDs `@g.us` y se hidrataron los grupos con instancias `Wid` completas.
+5. **Parche Permanente en `parche-multimedia.js`:** Se actualizaron las secciones 4 y 6 para asegurar que estas modificaciones persistan ante cualquier re-instalación o ejecución de `npm install`.
+
