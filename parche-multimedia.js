@@ -13,17 +13,39 @@ let code = fs.readFileSync(rutaUtils, 'utf8');
 let patched = false;
 
 // 1. Asegurar que processMediaData y sendMessage limpien __x_id e id
-if (!code.includes('cleanMediaOptions')) {
+if (!code.includes('cleanMediaOptions.type')) {
     code = code.replace(
-        /const message = \{[\s\S]*?\.\.\.extraOptions,[\s\S]*?\};/,
+        /const message = \{[\s\S]*?\.\.\.extraOptions,[\s\S]*?\};|let cleanMediaOptions = \{[\s\S]*?delete message\.__x_id;/,
         `let cleanMediaOptions = {};
-        if (mediaOptions) {
+        if (mediaOptions && (Object.keys(mediaOptions).length > 0 || typeof mediaOptions.toJSON === 'function')) {
+            const rawAttrs = typeof mediaOptions.toJSON === 'function'
+                ? mediaOptions.toJSON()
+                : (mediaOptions.attributes ? { ...mediaOptions.attributes } : { ...mediaOptions });
+            const mediaTypeVal = mediaOptions.type
+                || (typeof mediaOptions.get === 'function' ? mediaOptions.get('type') : null)
+                || rawAttrs.type
+                || (rawAttrs.mimetype?.startsWith('image/') ? 'image' : null)
+                || 'image';
+
             cleanMediaOptions = {
-                ...mediaOptions,
-                ...(typeof mediaOptions.toJSON === 'function' ? mediaOptions.toJSON() : {}),
+                ...rawAttrs,
+                type: mediaTypeVal,
+                clientUrl: mediaOptions.clientUrl || rawAttrs.clientUrl,
+                directPath: mediaOptions.directPath || rawAttrs.directPath,
+                mediaKey: mediaOptions.mediaKey || rawAttrs.mediaKey,
+                mediaKeyTimestamp: mediaOptions.mediaKeyTimestamp || rawAttrs.mediaKeyTimestamp,
+                filehash: mediaOptions.filehash || rawAttrs.filehash,
+                encFilehash: mediaOptions.encFilehash || rawAttrs.encFilehash,
+                uploadhash: mediaOptions.uploadhash || rawAttrs.uploadhash,
+                size: mediaOptions.size || rawAttrs.size,
+                mimetype: mediaOptions.mimetype || rawAttrs.mimetype,
             };
             delete cleanMediaOptions.__x_id;
             delete cleanMediaOptions.id;
+            delete cleanMediaOptions._events;
+            delete cleanMediaOptions._eventsCount;
+            delete cleanMediaOptions._listenId;
+            delete cleanMediaOptions.cid;
         }
 
         const message = {
@@ -36,7 +58,7 @@ if (!code.includes('cleanMediaOptions')) {
             self: 'out',
             t: parseInt(new Date().getTime() / 1000),
             isNewMsg: true,
-            type: 'chat',
+            type: cleanMediaOptions.type || 'chat',
             ...ephemeralFields,
             ...cleanMediaOptions,
             id: newMsgKey,

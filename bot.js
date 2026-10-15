@@ -1002,8 +1002,12 @@ async function iniciarMotorDeEnvios() {
                     while (!envioExitoso) {
                         try {
                             // Abrir y enfocar el chat en WhatsApp Web para montar su modelo en memoria viva
+                            // Abrir y enfocar el chat en WhatsApp Web para montar su modelo en memoria viva
                             try {
                                 if (cliente?.pupPage && !cliente.pupPage.isClosed()) {
+                                    if (cliente.interface && typeof cliente.interface.openChatWindow === 'function') {
+                                        await cliente.interface.openChatWindow(grupoEncontrado.id._serialized).catch(() => {});
+                                    }
                                     await cliente.pupPage.evaluate(async (targetId) => {
                                         if (!window.require) return;
                                         try {
@@ -1027,7 +1031,7 @@ async function iniciarMotorDeEnvios() {
                                                 }
                                             }
                                         } catch (eInnerMount) {}
-                                    }, grupoEncontrado.id._serialized);
+                                    }, grupoEncontrado.id._serialized).catch(() => {});
                                 }
                             } catch (eMount) {}
 
@@ -1047,23 +1051,24 @@ async function iniciarMotorDeEnvios() {
                             }
 
                             // Simulación humana proporcional ("escribiendo...")
-                            let duracionTipeoSegundos = CONFIGURACION.tiempoEscrituraSegundos || 3;
+                            let duracionTipeoSegundos = CONFIGURACION.tiempoEscrituraSegundos || 1;
                             if (CONFIGURACION.simularEscribiendo) {
                                 try {
                                     const chatObj = await Promise.race([
                                         cliente.getChatById(grupoEncontrado.id._serialized),
-                                        new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_TYPING')), 4000))
-                                    ]);
+                                        new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_TYPING')), 3000))
+                                    ]).catch(() => null);
+
                                     if (chatObj && typeof chatObj.sendStateTyping === 'function') {
                                         const duracionTipeoMs = CONFIGURACION.tipeoProporcional !== false
-                                            ? calcularTiempoTipeoHumano(mensajeFinal.length, CONFIGURACION.tiempoEscrituraSegundos)
-                                            : (CONFIGURACION.tiempoEscrituraSegundos || 3) * 1000;
-                                        duracionTipeoSegundos = Math.round(duracionTipeoMs / 1000);
+                                            ? Math.min(3000, calcularTiempoTipeoHumano(mensajeFinal.length, CONFIGURACION.tiempoEscrituraSegundos))
+                                            : (CONFIGURACION.tiempoEscrituraSegundos || 1) * 1000;
+                                        duracionTipeoSegundos = Math.max(1, Math.round(duracionTipeoMs / 1000));
 
-                                        await chatObj.sendStateTyping();
+                                        await chatObj.sendStateTyping().catch(() => {});
                                         await esperar(duracionTipeoMs);
-                                        await chatObj.clearState();
-                                        await esperar(300 + Math.floor(Math.random() * 400));
+                                        await chatObj.clearState().catch(() => {});
+                                        await esperar(200);
                                     }
                                 } catch (eTyping) {}
                             }
@@ -1075,13 +1080,17 @@ async function iniciarMotorDeEnvios() {
 
                             // Envío con timeout y verificación de recepción en servidores de WhatsApp
                             const esperarConfirmacion = CONFIGURACION.esperarConfirmacionServidor !== false;
-                            await enviarConTimeout(
+                            const resEnvio = await enviarConTimeout(
                                 cliente.sendMessage(grupoEncontrado.id._serialized, mediaAEnviar, { 
                                     caption: mensajeFinal,
                                     waitUntilMsgSent: esperarConfirmacion 
                                 }),
                                 CONFIGURACION.tiempoMaximoEnvioSegundos || 90
                             );
+
+                            if (!resEnvio || !resEnvio.id) {
+                                throw new Error('El mensaje no fue aceptado por WhatsApp Web (retorno nulo)');
+                            }
 
                             gruposEnviadosEnEsteCiclo.add(grupoEncontrado.id._serialized);
                             guardarEstado(i, gruposEnviadosEnEsteCiclo);
@@ -1096,7 +1105,11 @@ async function iniciarMotorDeEnvios() {
                                 CONFIGURACION.tiempoEsperaMaxSegundos
                             );
 
-                            // Mostrar tarjeta elegante con separación clara
+                            // Mostrar tarjeta elegante con separación clara y hash anti-detección
+                            const hashVisual = mediaAEnviar?.hashSha256
+                                ? `${mediaAEnviar.hashSha256.slice(0, 8)}...${mediaAEnviar.hashSha256.slice(-6)}`
+                                : null;
+
                             logger.grupoCard({
                                 contador: contadorGrupoActual,
                                 total: totalGrupos,
@@ -1105,7 +1118,8 @@ async function iniciarMotorDeEnvios() {
                                 horaEnvio: logger.hora(),
                                 esperaProxima: esperaMs,
                                 simuloTipeo: CONFIGURACION.simularEscribiendo,
-                                tiempoTipeo: duracionTipeoSegundos
+                                tiempoTipeo: duracionTipeoSegundos,
+                                hashImagen: hashVisual
                             });
 
                             // Esperar antes del próximo grupo

@@ -130,7 +130,10 @@ function generarMediaPolimorfica(rutaArchivo) {
 
         const base64Data = bufferVariado.toString('base64');
         const nombreArchivo = path.basename(rutaArchivo);
-        return new MessageMedia(mimeType, base64Data, nombreArchivo);
+        const hashSha256 = crypto.createHash('sha256').update(bufferVariado).digest('hex');
+        const mediaInstancia = new MessageMedia(mimeType, base64Data, nombreArchivo);
+        mediaInstancia.hashSha256 = hashSha256;
+        return mediaInstancia;
     } catch (err) {
         // Fallback ultra-seguro ante cualquier imprevisto
         return MessageMedia.fromFilePath(rutaArchivo);

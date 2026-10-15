@@ -178,6 +178,51 @@ Para que los mensajes se entreguen al instante y tu número permanezca seguro:
 2. **Usa `waitUntilMsgSent: true`**:
    Garantiza que el bot confirme con los servidores de WhatsApp que cada mensaje fue transmitido antes de iniciar la cuenta regresiva hacia el próximo grupo.
 3. **Respeta los descansos orgánicos configurados**:
-   Los tiempos de espera de 15 a 25 segundos y las pausas escalonadas cada 5, 10 y 20 grupos emulan comportamiento humano y evitan que Meta someta tu cuenta a revisiones automáticas.
+   Los tiempos de espera optimizados de 4 a 8 segundos emulan comportamiento humano y evitan que Meta someta tu cuenta a revisiones automáticas.
 4. **Si una sesión se desincroniza**:
    Simplemente ejecuta `reiniciar_sesion.bat` para limpiar los archivos temporales y escanear un código QR limpio.
+
+---
+
+## 9. Problema: El bot marcaba "Enviado con éxito" en 2 segundos pero los mensajes no aparecían en los grupos (Pseudo-Envío Silencioso)
+
+### 🔴 Síntoma
+En la terminal del bot, cada grupo se procesaba en apenas 1 a 2 segundos y se marcaba inmediatamente como:
+`✅ Enviado con éxito (Imagen + Texto)`
+Sin embargo, al revisar WhatsApp Web o la aplicación en el teléfono móvil, el mensaje **no existía en el grupo**, ni siquiera con icono de reloj.
+
+### 🔬 Causa Raíz
+1. **Contaminación y Omisión de `type: 'image'` en el Inyector de WhatsApp Web**:
+   En el archivo inyectado `Utils.js` (`window.WWebJS.sendMessage`), el objeto de mensaje se creaba inicialmente con `type: 'chat'`. Cuando se procesaba una imagen, las propiedades de `mediaOptions` se extraían sin transferir el atributo `type: 'image'` (que en los modelos de Backbone de WhatsApp Web reside en el prototipo y no en los atributos propios). Como resultado, el mensaje se enviaba a la función `addAndSendMsgToChat` como un chat de texto convencional con un cuerpo en base64 y metadatos no serializables (`_events`, `cid`). El serializador Protobuf interno de WhatsApp Web descartaba silenciosamente la petición sin lanzar una excepción JavaScript.
+2. **Falta de Validación del Retorno de `cliente.sendMessage`**:
+   `bot.js` ejecutaba `await enviarConTimeout(cliente.sendMessage(...))` sin verificar que la función retornara un objeto con ID de mensaje confirmado (`resEnvio.id`). Al resolver la promesa con un valor nulo o falso positivo interno, el bucle avanzaba inmediatamente al estado de éxito.
+3. **Chat no enfocado en el Viewport**:
+   WhatsApp Web en sus versiones modernas no procesa la cola de subida multimedia por WebSocket para chats cerrados o inactivos si la ventana del chat no ha sido activada en el DOM.
+
+### 🟢 Solución Implementada
+* **Saneamiento Estricto de Media en `Utils.js` y `parche-multimedia.js`**:
+  Se reformuló `cleanMediaOptions` para extraer exclusivamente los atributos puros (`clientUrl`, `directPath`, `mediaKey`, `filehash`, `size`, `mimetype`) y forzar explícitamente `type: 'image'`.
+* **Activación de Ventana de Chat**:
+  Se incorporó `cliente.interface.openChatWindow(grupoId)` antes de la emisión para montar y enfocar el chat en el DOM de WhatsApp Web.
+* **Validación Crítica de Entrega**:
+  `bot.js` ahora comprueba estrictamente `if (!resEnvio || !resEnvio.id) throw ...`, asegurando que el mensaje fue registrado y aceptado por WhatsApp antes de marcarlo como exitoso.
+
+---
+
+## 10. Escudo Polimórfico Multimedia: Anti-Detección de Spam por Hashing (SHA-256 Dinámico)
+
+### ❓ ¿Qué es y cómo se llama esta tecnología?
+Esta técnica se denomina en ciberseguridad e ingeniería de software **Polimorfismo Criptográfico Multimedia** (o **Escudo Polimórfico de Archivos**).
+
+### ⚙️ ¿Cómo funciona?
+1. Los filtros automatizados de spam de Meta (WhatsApp, Instagram, Facebook) calculan una "huella digital matemática" (denominada **Checksum / Hash SHA-256 o MD5**) de cada imagen o archivo que envías.
+2. Si un usuario envía la misma imagen idéntica a 100 grupos en un periodo corto, todos los envíos comparten exactamente el mismo hash. El algoritmo de Meta detecta inmediatamente un patrón de difusión automatizada ("Mass Broadcasting") y puede suspender temporal o permanentemente el número.
+3. El **Generador Polimórfico** del bot (`src/generadorMultimedia.js`) intercepta la imagen original en la memoria RAM y, en cada envío, le inyecta un micro-fragmento criptográfico aleatorio válido:
+   - En imágenes **PNG**: Inserta un bloque auxiliar `tEXt` legítimo inmediatamente antes del chunk terminal `IEND`.
+   - En imágenes **JPEG/JPG**: Inserta un marcador de comentario `COM` (`0xFF 0xFE`) inmediatamente después de la cabecera `SOI`.
+4. Visualmente para el ojo humano, la imagen es **100% idéntica y nítida**. Sin embargo, para los servidores de WhatsApp, cada envío posee una firma criptográfica (SHA-256) totalmente única y distinta, imposibilitando la detección por coincidencia de archivos idénticos.
+
+### 👁️ ¿Cómo saber en tiempo real que está funcionando?
+En cada grupo emitido, la tarjeta de la terminal ahora muestra en color cian la firma criptográfica generada para ese envío en particular:
+`• Anti-Detección: 🔒 Hash SHA-256: 4a9f8b1c...e102d4 (Único)`
+Al observar la consola grupo tras grupo, verás que **cada grupo muestra un hash completamente diferente**, certificando que ningún grupo recibe el mismo archivo binario.

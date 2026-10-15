@@ -133,7 +133,7 @@ const logger = {
     },
 
     // Tarjeta individual de grupo enviado (con separación visual clara)
-    grupoCard: ({ contador, total, nombre, id, horaEnvio, esperaProxima, simuloTipeo, tiempoTipeo }) => {
+    grupoCard: ({ contador, total, nombre, id, horaEnvio, esperaProxima, simuloTipeo, tiempoTipeo, hashImagen }) => {
         const div = '─'.repeat(78);
         const porcentaje = Math.round((contador / total) * 100);
 
@@ -141,6 +141,9 @@ const logger = {
         console.log(` ${C.cyan}${C.bold}📦 GRUPO [${contador} / ${total}]${C.reset} ${C.dim}(${porcentaje}%)${C.reset}  »  ${C.bold}${nombre}${C.reset}`);
         if (id) {
             console.log(`    ${C.dim}• ID:${C.reset}         ${C.dim}${id}${C.reset}`);
+        }
+        if (hashImagen) {
+            console.log(`    • Anti-Detección: 🔒 ${C.cyan}Hash SHA-256: ${hashImagen} (Único)${C.reset}`);
         }
         if (simuloTipeo) {
             console.log(`    • Simulación: ✍️  ${C.dim}Tipeo humano completado (${tiempoTipeo}s)${C.reset}`);
@@ -151,7 +154,7 @@ const logger = {
         }
         console.log(`${C.dim}${div}${C.reset}\n`);
 
-        registrarEnArchivo(`[GRUPO ${contador}/${total}] ENVIADO: ${nombre} (${id})`);
+        registrarEnArchivo(`[GRUPO ${contador}/${total}] ENVIADO: ${nombre} (${id}) ${hashImagen ? `[SHA-256: ${hashImagen}]` : ''}`);
     },
 
     // Grupo saltado (Solo admin o no encontrado)
