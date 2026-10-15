@@ -163,6 +163,15 @@ if (!code.includes('chatCol.getModelsArray')) {
                         chat = (await findAction.findOrCreateLatestChat(chatWid))?.chat;
                     }
                 } catch (eFC) {}
+            }
+            if (!chat && chatWid) {
+                try {
+                    const chatClass = chatCol.modelClass || (window.require ? window.require('WAWebChatModel')?.default : null);
+                    if (chatClass) {
+                        chat = new chatClass({ id: chatWid });
+                        if (chatCol.add) chatCol.add(chat);
+                    }
+                } catch (eNew) {}
             }`
     );
     patched = true;
@@ -194,4 +203,82 @@ if (patched) {
     console.log('✅ Parche multimedia, de serialización y findChat aplicado correctamente a whatsapp-web.js.');
 } else {
     console.log('✅ whatsapp-web.js ya cuenta con todos los parches necesarios.');
+}
+
+// 6. Parche en Client.js para garantizar fallback de chat y modelo de mensaje
+const rutaClient = path.join(__dirname, 'node_modules', 'whatsapp-web.js', 'src', 'Client.js');
+if (fs.existsSync(rutaClient)) {
+    let codeClient = fs.readFileSync(rutaClient, 'utf8');
+    if (!codeClient.includes('__debugError')) {
+        codeClient = codeClient.replace(
+            /const sentMsg = await this\.pupPage\.evaluate\([\s\S]*?return sentMsg \? new Message\(this, sentMsg\) : undefined;/,
+            `const sentMsg = await this.pupPage.evaluate(
+            async (chatId, content, options, sendSeen) => {
+                try {
+                    let chat = await window.WWebJS.getChat(chatId, {
+                        getAsModel: false,
+                    });
+
+                    if (!chat) {
+                        const chatCol = (window.require ? window.require('WAWebCollections')?.Chat : null) || window.Store?.Chat;
+                        const wid = (window.require ? window.require('WAWebWidFactory')?.createWid(chatId) : null);
+                        if (chatCol) {
+                            chat = (wid && chatCol.get ? chatCol.get(wid) : null) || (chatCol.get ? chatCol.get(chatId) : null);
+                            if (!chat) {
+                                const models = typeof chatCol.getModelsArray === 'function' ? chatCol.getModelsArray() : (Array.isArray(chatCol.models) ? chatCol.models : []);
+                                chat = models.find(m => {
+                                    const mId = m?.id?._serialized || String(m?.id || '');
+                                    return mId === chatId || (wid && mId === wid._serialized);
+                                });
+                            }
+                        }
+                    }
+
+                    if (!chat) {
+                        return { __debugError: \`CHAT_NOT_FOUND: No se encontró el chat \${chatId} en memoria viva\` };
+                    }
+
+                    if (sendSeen) {
+                        await window.WWebJS.sendSeen(chatId).catch(() => {});
+                    }
+
+                    const msg = await window.WWebJS.sendMessage(
+                        chat,
+                        content,
+                        options,
+                    );
+
+                    if (!msg) {
+                        return { __debugError: \`SEND_MSG_NULL: WWebJS.sendMessage retornó null/undefined para \${chatId}\` };
+                    }
+
+                    const model = window.WWebJS.getMessageModel(msg);
+                    if (!model) {
+                        return {
+                            id: msg.id ? (msg.id._serialized ? msg.id : { _serialized: String(msg.id) }) : { _serialized: 'msg_' + Date.now() },
+                            ack: typeof msg.ack === 'number' ? msg.ack : 1,
+                            body: msg.caption || msg.body || '',
+                            type: msg.type || 'image'
+                        };
+                    }
+                    return model;
+                } catch (eEval) {
+                    return { __debugError: \`EVAL_EXCEPTION: \${eEval?.message || eEval}\` };
+                }
+            },
+            chatId,
+            content,
+            internalOptions,
+            sendSeen,
+        );
+
+        if (sentMsg && sentMsg.__debugError) {
+            throw new Error(sentMsg.__debugError);
+        }
+
+        return sentMsg ? new Message(this, sentMsg) : undefined;`
+        );
+        fs.writeFileSync(rutaClient, codeClient, 'utf8');
+        console.log('✅ Parche de robustez aplicado a Client.js.');
+    }
 }
